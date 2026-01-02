@@ -495,19 +495,19 @@ function HomePage({ setCurrentPage }) {
 function ServicesPage({ setCurrentPage }) {
   const services = [
     {
+      category: 'Recurring Home Inspections',
+      items: ['Regular Walk Throughs', 'System Tests and Check Ups', 'Exterior Inspections', 'Trouble Identification', 'Project Consulting'],
+      icon: '✅'
+    },
+    {
       category: 'Repairs & Maintenance',
       items: ['Plumbing Repairs', 'Electrical Work', 'HVAC Service', 'Appliance Repair', 'General Handyman'],
       icon: '🔧'
     },
     {
-      category: 'Renovation & Remodeling',
-      items: ['Kitchen Remodeling', 'Bathroom Renovation', 'Basement Finishing', 'Room Additions', 'Flooring Installation'],
+      category: 'Renovations & Repairs',
+      items: ['Roofing & Siding', 'Kitchen & Bathroom Renovation', 'Flooring', 'Landscaping', 'Room & Basement Finishing'],
       icon: '🏗️'
-    },
-    {
-      category: 'Exterior Services',
-      items: ['Roofing', 'Siding Installation', 'Window Replacement', 'Deck Building', 'Landscaping'],
-      icon: '🏡'
     },
     {
       category: 'Specialized Services',
