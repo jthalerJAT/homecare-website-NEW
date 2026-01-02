@@ -158,7 +158,7 @@ function Navigation({ currentPage, setCurrentPage, mobileMenuOpen, setMobileMenu
           onClick={() => setCurrentPage('home')}
           style={{
             fontFamily: '"DM Serif Display", serif',
-            fontSize: '2.5rem',
+            fontSize: '3.0rem',
             cursor: 'pointer',
             background: 'linear-gradient(135deg, #2dd4bf 0%, #a855f7 100%)',
             WebkitBackgroundClip: 'text',
@@ -167,7 +167,7 @@ function Navigation({ currentPage, setCurrentPage, mobileMenuOpen, setMobileMenu
             letterSpacing: '-0.02em'
           }}
         >
-          Greenwich Property Care
+          Greenwich Property Care LLC
         </div>
 
         {/* Desktop Menu */}
