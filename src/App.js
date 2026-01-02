@@ -167,7 +167,7 @@ function Navigation({ currentPage, setCurrentPage, mobileMenuOpen, setMobileMenu
             letterSpacing: '-0.02em'
           }}
         >
-          HomeCare Pro
+          Greenwich Property Care
         </div>
 
         {/* Desktop Menu */}
@@ -1444,7 +1444,7 @@ function AboutPage() {
           WebkitTextFillColor: 'transparent',
           opacity: 0
         }}>
-          About HomeCare Pro
+          About Greenwich Property Care
         </h1>
         <p className="animate-in" style={{
           fontSize: '1.15rem',
@@ -1578,7 +1578,7 @@ function Footer({ setCurrentPage }) {
             WebkitBackgroundClip: 'text',
             WebkitTextFillColor: 'transparent'
           }}>
-            HomeCare Pro
+            Greenwich Property Care
           </div>
           <p style={{ color: '#94a3b8', lineHeight: '1.6', fontSize: '0.95rem' }}>
             Your trusted partner for all home improvement and maintenance needs.
@@ -1632,7 +1632,7 @@ function Footer({ setCurrentPage }) {
         color: '#94a3b8',
         fontSize: '0.9rem'
       }}>
-        <p>© 2026 HomeCare Pro. All rights reserved.</p>
+        <p>© 2026 Greenwich Property Care. All rights reserved.</p>
       </div>
     </footer>
   );
