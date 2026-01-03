@@ -1651,6 +1651,7 @@ function Footer({ setCurrentPage }) {
     <div>24/7 Customer Support</div>
   </div>
 </div>
+      </div>
       
       <div style={{
         borderTop: '1px solid rgba(45, 212, 191, 0.15)',
@@ -1664,3 +1665,5 @@ function Footer({ setCurrentPage }) {
     </footer>
   );
 }
+
+export default APP;
