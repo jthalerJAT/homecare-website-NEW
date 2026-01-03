@@ -1543,14 +1543,14 @@ function AboutPage() {
             <Phone size={24} color="#2dd4bf" />
             <div>
               <div style={{ color: '#94a3b8', fontSize: '0.9rem' }}>Phone</div>
-              <div style={{ color: '#e8edf5', fontWeight: '600' }}>1-800-HOME-CARE</div>
+              <div style={{ color: '#e8edf5', fontWeight: '600' }}>203-350-2014</div>
             </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', justifyContent: 'center' }}>
             <Mail size={24} color="#2dd4bf" />
             <div>
               <div style={{ color: '#94a3b8', fontSize: '0.9rem' }}>Email</div>
-              <div style={{ color: '#e8edf5', fontWeight: '600' }}>info@homecarepro.com</div>
+              <div style={{ color: '#e8edf5', fontWeight: '600' }}>info@greenwichpropertycare.com</div>
             </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', justifyContent: 'center' }}>
@@ -1634,8 +1634,14 @@ function Footer({ setCurrentPage }) {
             Contact
           </h4>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', color: '#94a3b8', fontSize: '0.95rem' }}>
-            <div>1-800-HOME-CARE</div>
-            <div>info@homecarepro.com</div>
+            <div>203-350-2014</div>
+            <div>info@greenwichpropertycare.com</div>
+            <div className="feature-card" style={{textAlign: 'center'}}>
+  <div className="feature-icon" style={{margin: '0 auto 1rem'}}>📍</div>
+  <h3>Address</h3>
+  <p>24 Field Point Rd</p>
+  <p>Greenwich, CT 06830</p>
+</div>
             <div>24/7 Customer Support</div>
           </div>
         </div>
