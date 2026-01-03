@@ -1471,7 +1471,7 @@ function AboutPage() {
           animationDelay: '0.2s',
           opacity: 0
         }}>
-          We connect homeowners with trusted, vetted contractors for all their home improvement needs. Quality work, transparent pricing, and exceptional service are at the heart of everything we do.
+          We provide homeowners with trusted, vetted labor across all trades for all their home improvement needs. Quality work, transparent pricing, and exceptional service are at the heart of everything we do.
         </p>
       </div>
 
