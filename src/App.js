@@ -167,7 +167,7 @@ function Navigation({ currentPage, setCurrentPage, mobileMenuOpen, setMobileMenu
             letterSpacing: '-0.02em'
           }}
         >
-          Greenwich Property Care LLC
+          Greenwich Property Care
         </div>
 
         {/* Desktop Menu */}
