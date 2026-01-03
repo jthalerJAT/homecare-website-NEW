@@ -1665,5 +1665,3 @@ function Footer({ setCurrentPage }) {
     </footer>
   );
 }
-
-export default APP;
