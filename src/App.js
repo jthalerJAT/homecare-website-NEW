@@ -1636,12 +1636,11 @@ function Footer({ setCurrentPage }) {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', color: '#94a3b8', fontSize: '0.95rem' }}>
             <div>203-350-2014</div>
             <div>info@greenwichpropertycare.com</div>
-            <div className="feature-card" style={{textAlign: 'center'}}>
-  <div className="feature-icon" style={{margin: '0 auto 1rem'}}>📍</div>
-  <h3>Address</h3>
+            <div className="feature-card" 
+    <h3>Address</h3>
   <p>24 Field Point Rd</p>
   <p>Greenwich, CT 06830</p>
-</div>
+</div>  
             <div>24/7 Customer Support</div>
           </div>
         </div>
