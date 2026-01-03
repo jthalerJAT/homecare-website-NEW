@@ -670,20 +670,36 @@ function RequestQuotePage() {
   const [submitted, setSubmitted] = useState(false);
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
+  e.preventDefault();
+  
+  try {
+    // Prepare email parameters matching our template
+    const templateParams = {
+      from_name: formData.name,
+      email: formData.email,
+      phone: formData.phone,
+      address: formData.address,
+      service_type: formData.serviceType,
+      urgency: formData.urgency,
+      preferred_date: formData.preferredDate,
+      message: formData.description
+    };
     
-    // This would connect to your backend API
-    console.log('Submitting quote request:', formData);
+    // Send email via EmailJS
+    await window.emailjs.send(
+      'service_nwt18xw',
+      'template_x7a8uha',
+      templateParams
+    );
     
-    // Simulated API call
-    // await fetch('/api/quotes', {
-    //   method: 'POST',
-    //   headers: { 'Content-Type': 'application/json' },
-    //   body: JSON.stringify(formData)
-    // });
-    
+    console.log('Quote request sent successfully!');
     setSubmitted(true);
-  };
+    
+  } catch (error) {
+    console.error('Error sending quote request:', error);
+    alert('Sorry, there was an error submitting your request. Please email us directly at info@greenwichpropertycare.com');
+  }
+};
 
   if (submitted) {
     return (
