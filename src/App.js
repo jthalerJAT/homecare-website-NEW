@@ -1630,17 +1630,28 @@ function Footer({ setCurrentPage }) {
         </div>
 
         <div>
-          <h4 style={{ color: '#e8edf5', marginBottom: '1rem', fontSize: '1.1rem', fontWeight: '600' }}>
-            Contact
-          </h4>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', color: '#94a3b8', fontSize: '0.95rem' }}>
-            <div>203-350-2014</div>
-            <div>info@greenwichpropertycare.com</div>
-            <div>24 Field Point Rd, Greenwich CT 06830</div>
-            <div>24/7 Customer Support</div>
-          </div>
-      </div>
-
+  <h4 style={{
+    color: '#e8edf5',
+    marginBottom: '1rem',
+    fontSize: '1.1rem',
+    fontWeight: 600
+  }}>
+    Contact
+  </h4>
+  <div style={{ 
+    display: 'flex', 
+    flexDirection: 'column', 
+    gap: '0.75rem', 
+    color: '#94a3b8', 
+    fontSize: '0.95rem' 
+  }}>
+    <div>203-350-2014</div>
+    <div>info@greenwichpropertycare.com</div>
+    <div>24 Field Point Rd, Greenwich, CT 06830</div>
+    <div>24/7 Customer Support</div>
+  </div>
+</div>
+      
       <div style={{
         borderTop: '1px solid rgba(45, 212, 191, 0.15)',
         paddingTop: '2rem',
