@@ -139,6 +139,8 @@ export default function HomeCareWebsite() {
         return <RequestQuotePage />;
       case 'portal':
         return isAuthenticated ? <CustomerPortal user={user} token={token} onLogout={handleLogout} /> : <LoginPage onLoginSuccess={handleLogin} setCurrentPage={setCurrentPage} />;
+      case 'register':
+        return <RegisterPage onRegisterSuccess={handleLogin} setCurrentPage={setCurrentPage} />;
       case 'about':
         return <AboutPage />;
       default:
@@ -1272,6 +1274,278 @@ function LoginPage({ onLoginSuccess, setCurrentPage }) {
             style={{ color: '#2dd4bf', cursor: 'pointer', textDecoration: 'underline' }}
           >
             Register here
+          </span>
+        </p>
+      </form>
+    </div>
+  );
+}
+
+// Register Page
+function RegisterPage({ onRegisterSuccess, setCurrentPage }) {
+  const [formData, setFormData] = useState({
+    firstName: '',
+    lastName: '',
+    email: '',
+    password: '',
+    confirmPassword: '',
+    phone: '',
+    address: '',
+    city: '',
+    state: '',
+    zipCode: ''
+  });
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const handleRegister = async (e) => {
+    e.preventDefault();
+    setError('');
+
+    if (formData.password !== formData.confirmPassword) {
+      setError('Passwords do not match');
+      return;
+    }
+
+    if (formData.password.length < 6) {
+      setError('Password must be at least 6 characters');
+      return;
+    }
+
+    setIsLoading(true);
+    
+    try {
+      const result = await api.register({
+        email: formData.email,
+        password: formData.password,
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        phone: formData.phone,
+        address: formData.address,
+        city: formData.city,
+        state: formData.state,
+        zipCode: formData.zipCode
+      });
+      
+      if (result.token) {
+        onRegisterSuccess(result.user, result.token);
+        setCurrentPage('portal');
+      } else {
+        setError(result.error || 'Registration failed. Please try again.');
+      }
+    } catch (err) {
+      setError('Registration failed. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const inputStyle = {
+    width: '100%',
+    padding: '0.875rem',
+    borderRadius: '10px',
+    border: '1px solid rgba(45, 212, 191, 0.3)',
+    background: 'rgba(15, 23, 42, 0.5)',
+    color: '#e8edf5',
+    fontSize: '1rem',
+    boxSizing: 'border-box'
+  };
+
+  const labelStyle = {
+    display: 'block',
+    marginBottom: '0.5rem',
+    color: '#e8edf5',
+    fontWeight: 500
+  };
+
+  return (
+    <div style={{ padding: '4rem 2rem', maxWidth: '600px', margin: '0 auto' }}>
+      <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
+        <h1 style={{
+          fontFamily: '"DM Serif Display", serif',
+          fontSize: '2.5rem',
+          marginBottom: '1rem',
+          background: 'linear-gradient(135deg, #ffffff 0%, #2dd4bf 100%)',
+          WebkitBackgroundClip: 'text',
+          WebkitTextFillColor: 'transparent'
+        }}>
+          Create Your Account
+        </h1>
+        <p style={{ color: '#94a3b8' }}>Join Greenwich Property Care to manage your projects</p>
+      </div>
+
+      {error && (
+        <div style={{
+          background: 'rgba(239, 68, 68, 0.1)',
+          border: '1px solid rgba(239, 68, 68, 0.3)',
+          borderRadius: '12px',
+          padding: '1rem',
+          marginBottom: '1.5rem',
+          color: '#ef4444',
+          textAlign: 'center'
+        }}>
+          {error}
+        </div>
+      )}
+
+      <form onSubmit={handleRegister} style={{
+        background: 'rgba(26, 31, 53, 0.5)',
+        border: '1px solid rgba(45, 212, 191, 0.15)',
+        borderRadius: '24px',
+        padding: '2rem',
+        backdropFilter: 'blur(10px)'
+      }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+          <div>
+            <label style={labelStyle}>First Name *</label>
+            <input
+              type="text"
+              required
+              value={formData.firstName}
+              onChange={(e) => setFormData({...formData, firstName: e.target.value})}
+              placeholder="John"
+              style={inputStyle}
+            />
+          </div>
+          <div>
+            <label style={labelStyle}>Last Name *</label>
+            <input
+              type="text"
+              required
+              value={formData.lastName}
+              onChange={(e) => setFormData({...formData, lastName: e.target.value})}
+              placeholder="Smith"
+              style={inputStyle}
+            />
+          </div>
+        </div>
+
+        <div style={{ marginBottom: '1rem' }}>
+          <label style={labelStyle}>Email *</label>
+          <input
+            type="email"
+            required
+            value={formData.email}
+            onChange={(e) => setFormData({...formData, email: e.target.value})}
+            placeholder="your@email.com"
+            style={inputStyle}
+          />
+        </div>
+
+        <div style={{ marginBottom: '1rem' }}>
+          <label style={labelStyle}>Phone</label>
+          <input
+            type="tel"
+            value={formData.phone}
+            onChange={(e) => setFormData({...formData, phone: e.target.value})}
+            placeholder="203-555-1234"
+            style={inputStyle}
+          />
+        </div>
+
+        <div style={{ marginBottom: '1rem' }}>
+          <label style={labelStyle}>Address</label>
+          <input
+            type="text"
+            value={formData.address}
+            onChange={(e) => setFormData({...formData, address: e.target.value})}
+            placeholder="123 Main Street"
+            style={inputStyle}
+          />
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+          <div>
+            <label style={labelStyle}>City</label>
+            <input
+              type="text"
+              value={formData.city}
+              onChange={(e) => setFormData({...formData, city: e.target.value})}
+              placeholder="Greenwich"
+              style={inputStyle}
+            />
+          </div>
+          <div>
+            <label style={labelStyle}>State</label>
+            <input
+              type="text"
+              value={formData.state}
+              onChange={(e) => setFormData({...formData, state: e.target.value})}
+              placeholder="CT"
+              style={inputStyle}
+            />
+          </div>
+          <div>
+            <label style={labelStyle}>Zip</label>
+            <input
+              type="text"
+              value={formData.zipCode}
+              onChange={(e) => setFormData({...formData, zipCode: e.target.value})}
+              placeholder="06830"
+              style={inputStyle}
+            />
+          </div>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
+          <div>
+            <label style={labelStyle}>Password *</label>
+            <input
+              type="password"
+              required
+              value={formData.password}
+              onChange={(e) => setFormData({...formData, password: e.target.value})}
+              placeholder="Min 6 characters"
+              style={inputStyle}
+            />
+          </div>
+          <div>
+            <label style={labelStyle}>Confirm Password *</label>
+            <input
+              type="password"
+              required
+              value={formData.confirmPassword}
+              onChange={(e) => setFormData({...formData, confirmPassword: e.target.value})}
+              placeholder="Confirm password"
+              style={inputStyle}
+            />
+          </div>
+        </div>
+
+        <button
+          type="submit"
+          disabled={isLoading}
+          style={{
+            width: '100%',
+            padding: '1.1rem',
+            fontSize: '1.1rem',
+            fontWeight: '600',
+            border: 'none',
+            borderRadius: '12px',
+            cursor: isLoading ? 'wait' : 'pointer',
+            background: isLoading 
+              ? 'rgba(45, 212, 191, 0.5)' 
+              : 'linear-gradient(135deg, #2dd4bf 0%, #14b8a6 100%)',
+            color: '#0a0f1e',
+            transition: 'all 0.3s ease',
+            boxShadow: '0 8px 24px rgba(45, 212, 191, 0.3)'
+          }}
+        >
+          {isLoading ? 'Creating Account...' : 'Create Account'}
+        </button>
+
+        <p style={{
+          marginTop: '1.5rem',
+          textAlign: 'center',
+          color: '#94a3b8',
+          fontSize: '0.9rem'
+        }}>
+          Already have an account?{' '}
+          <span 
+            onClick={() => setCurrentPage('portal')}
+            style={{ color: '#2dd4bf', cursor: 'pointer', textDecoration: 'underline' }}
+          >
+            Login here
           </span>
         </p>
       </form>
