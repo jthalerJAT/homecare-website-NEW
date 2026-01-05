@@ -2,6 +2,85 @@ import React, { useState, useEffect } from 'react';
 import { Home, Calendar, CheckCircle, Users, MessageSquare, DollarSign, Search, Menu, X, ArrowRight, Star, Phone, Mail, MapPin, Clock } from 'lucide-react';
 
 // Main App Component
+// API Configuration
+const API_URL = 'https://gpc-backend-production.up.railway.app/api';
+
+// API Helper Functions
+const api = {
+  // Auth endpoints
+  register: async (userData) => {
+    const response = await fetch(`${API_URL}/auth/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(userData)
+    });
+    return response.json();
+  },
+  
+  login: async (email, password) => {
+    const response = await fetch(`${API_URL}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password })
+    });
+    return response.json();
+  },
+  
+  // Quote endpoints
+  submitQuote: async (quoteData, token) => {
+    const response = await fetch(`${API_URL}/quotes/request`, {
+      method: 'POST',
+      headers: { 
+        'Content-Type': 'application/json',
+        'Authorization': token ? `Bearer ${token}` : ''
+      },
+      body: JSON.stringify(quoteData)
+    });
+    return response.json();
+  },
+  
+  getMyQuotes: async (token) => {
+    const response = await fetch(`${API_URL}/quotes/my-requests`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    return response.json();
+  },
+  
+  // Project endpoints
+  getMyProjects: async (token) => {
+    const response = await fetch(`${API_URL}/projects/my-projects`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    return response.json();
+  },
+  
+  getProjectDetails: async (projectId, token) => {
+    const response = await fetch(`${API_URL}/projects/${projectId}`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    return response.json();
+  },
+  
+  // Message endpoints
+  getMessages: async (token) => {
+    const response = await fetch(`${API_URL}/messages`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    return response.json();
+  },
+  
+  sendMessage: async (messageData, token) => {
+    const response = await fetch(`${API_URL}/messages`, {
+      method: 'POST',
+      headers: { 
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}` 
+      },
+      body: JSON.stringify(messageData)
+    });
+    return response.json();
+  }
+};
 export default function HomeCareWebsite() {
   const [currentPage, setCurrentPage] = useState('home');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
