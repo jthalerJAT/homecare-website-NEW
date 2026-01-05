@@ -1183,6 +1183,49 @@ function RequestQuotePage({ user, token, isAuthenticated }) {
   );
 }
 
+// Input Field Component
+function InputField({ label, type, required, value, onChange, ...props }) {
+  return (
+    <div>
+      <label style={{
+        display: 'block',
+        marginBottom: '0.5rem',
+        color: '#cbd5e1',
+        fontSize: '0.95rem',
+        fontWeight: '500'
+      }}>
+        {label} {required && <span style={{ color: '#ef4444' }}>*</span>}
+      </label>
+      <input
+        type={type}
+        required={required}
+        value={value}
+        onChange={onChange}
+        {...props}
+        style={{
+          width: '100%',
+          padding: '0.875rem 1rem',
+          fontSize: '1rem',
+          border: '1px solid rgba(45, 212, 191, 0.2)',
+          borderRadius: '10px',
+          background: 'rgba(10, 15, 30, 0.6)',
+          color: '#e8edf5',
+          outline: 'none',
+          transition: 'all 0.3s ease'
+        }}
+        onFocus={(e) => {
+          e.target.style.borderColor = 'rgba(45, 212, 191, 0.5)';
+          e.target.style.background = 'rgba(10, 15, 30, 0.8)';
+        }}
+        onBlur={(e) => {
+          e.target.style.borderColor = 'rgba(45, 212, 191, 0.2)';
+          e.target.style.background = 'rgba(10, 15, 30, 0.6)';
+        }}
+      />
+    </div>
+  );
+}
+
 // Login Page
 function LoginPage({ onLoginSuccess, setCurrentPage }) {
   const [credentials, setCredentials] = useState({ email: '', password: '' });
