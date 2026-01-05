@@ -1280,65 +1280,79 @@ function LoginPage({ onLoginSuccess, setCurrentPage }) {
 }
 
 // Customer Portal
-function CustomerPortal({ userType }) {
+function CustomerPortal({ user, token, onLogout }) {
   const [activeTab, setActiveTab] = useState('projects');
+  const [projects, setProjects] = useState([]);
+  const [quotes, setQuotes] = useState([]);
+  const [messages, setMessages] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Mock data - would come from your backend
-  const projects = [
-    {
-      id: 1,
-      title: 'Kitchen Remodel',
-      status: 'In Progress',
-      contractor: 'John Smith',
-      startDate: '2026-01-15',
-      progress: 65,
-      updates: [
-        { date: '2026-01-28', message: 'Cabinets installed, starting countertop work' },
-        { date: '2026-01-20', message: 'Plumbing completed, electrical in progress' }
-      ]
-    },
-    {
-      id: 2,
-      title: 'Bathroom Renovation',
-      status: 'Pending Quote',
-      contractor: null,
-      startDate: null,
-      progress: 0,
-      updates: []
-    }
-  ];
+  // Fetch user's data from backend
+  useEffect(() => {
+    const fetchData = async () => {
+      setIsLoading(true);
+      try {
+        const [quotesResult, projectsResult, messagesResult] = await Promise.all([
+          api.getMyQuotes(token),
+          api.getMyProjects(token),
+          api.getMessages(token)
+        ]);
+        
+        setQuotes(quotesResult.quoteRequests || []);
+        setProjects(projectsResult.projects || []);
+        setMessages(messagesResult.messages || []);
+      } catch (error) {
+        console.error('Error fetching data:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
 
-  const quotes = [
-    {
-      id: 1,
-      service: 'Kitchen Remodel',
-      amount: 15000,
-      status: 'Accepted',
-      date: '2026-01-10'
-    },
-    {
-      id: 2,
-      service: 'Bathroom Renovation',
-      amount: 8500,
-      status: 'Pending',
-      date: '2026-01-25'
+    if (token) {
+      fetchData();
     }
-  ];
+  }, [token]);
 
   return (
     <div style={{ padding: '2rem', maxWidth: '1400px', margin: '0 auto' }}>
-      <div style={{ marginBottom: '3rem' }}>
-        <h1 style={{
-          fontFamily: '"DM Serif Display", serif',
-          fontSize: '2.5rem',
-          marginBottom: '0.5rem',
-          color: '#e8edf5'
-        }}>
-          {userType === 'customer' ? 'Customer Portal' : 'Contractor Dashboard'}
-        </h1>
-        <p style={{ color: '#94a3b8', fontSize: '1.05rem' }}>
-          Welcome back! Here's an overview of your {userType === 'customer' ? 'projects' : 'assignments'}.
-        </p>
+      {/* Header with Logout */}
+      <div style={{ 
+        display: 'flex', 
+        justifyContent: 'space-between', 
+        alignItems: 'center',
+        marginBottom: '2rem',
+        flexWrap: 'wrap',
+        gap: '1rem'
+      }}>
+        <div>
+          <h1 style={{
+            fontFamily: '"DM Serif Display", serif',
+            fontSize: '2.5rem',
+            marginBottom: '0.5rem',
+            color: '#e8edf5'
+          }}>
+            Welcome, {user?.first_name || 'Customer'}!
+          </h1>
+          <p style={{ color: '#94a3b8', fontSize: '1.05rem' }}>
+            Here's an overview of your quotes and projects.
+          </p>
+        </div>
+        <button
+          onClick={onLogout}
+          style={{
+            padding: '0.75rem 1.5rem',
+            background: 'rgba(239, 68, 68, 0.1)',
+            border: '1px solid rgba(239, 68, 68, 0.3)',
+            borderRadius: '10px',
+            color: '#ef4444',
+            cursor: 'pointer',
+            fontSize: '1rem',
+            fontWeight: '600',
+            transition: 'all 0.3s ease'
+          }}
+        >
+          Logout
+        </button>
       </div>
 
       {/* Tabs */}
@@ -1349,7 +1363,7 @@ function CustomerPortal({ userType }) {
         borderBottom: '1px solid rgba(45, 212, 191, 0.15)',
         flexWrap: 'wrap'
       }}>
-        {['projects', 'quotes', 'messages'].map(tab => (
+        {['quotes', 'projects', 'messages'].map(tab => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
@@ -1366,189 +1380,222 @@ function CustomerPortal({ userType }) {
               transition: 'all 0.3s ease'
             }}
           >
-            {tab}
+            {tab} {tab === 'quotes' && `(${quotes.length})`}
+            {tab === 'projects' && `(${projects.length})`}
+            {tab === 'messages' && `(${messages.length})`}
           </button>
         ))}
       </div>
 
-      {/* Projects Tab */}
-      {activeTab === 'projects' && (
-        <div style={{ display: 'grid', gap: '1.5rem' }}>
-          {projects.map(project => (
-            <div
-              key={project.id}
-              style={{
-                background: 'rgba(26, 31, 53, 0.5)',
-                border: '1px solid rgba(45, 212, 191, 0.15)',
-                borderRadius: '16px',
-                padding: '2rem',
-                backdropFilter: 'blur(10px)'
-              }}
-            >
-              <div style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'start',
-                marginBottom: '1.5rem',
-                flexWrap: 'wrap',
-                gap: '1rem'
-              }}>
-                <div>
-                  <h3 style={{
-                    fontSize: '1.5rem',
-                    marginBottom: '0.5rem',
-                    color: '#e8edf5',
-                    fontWeight: '600'
-                  }}>
-                    {project.title}
-                  </h3>
-                  {project.contractor && (
-                    <p style={{ color: '#94a3b8', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                      <Users size={16} />
-                      Contractor: {project.contractor}
-                    </p>
-                  )}
-                </div>
-                <div style={{
-                  padding: '0.5rem 1rem',
-                  borderRadius: '8px',
-                  background: project.status === 'In Progress' ? 'rgba(45, 212, 191, 0.1)' : 'rgba(168, 85, 247, 0.1)',
-                  border: `1px solid ${project.status === 'In Progress' ? 'rgba(45, 212, 191, 0.3)' : 'rgba(168, 85, 247, 0.3)'}`,
-                  color: project.status === 'In Progress' ? '#2dd4bf' : '#a855f7',
-                  fontSize: '0.9rem',
-                  fontWeight: '600'
-                }}>
-                  {project.status}
-                </div>
-              </div>
-
-              {project.progress > 0 && (
-                <div style={{ marginBottom: '1.5rem' }}>
-                  <div style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    marginBottom: '0.5rem'
-                  }}>
-                    <span style={{ color: '#cbd5e1', fontSize: '0.9rem' }}>Progress</span>
-                    <span style={{ color: '#2dd4bf', fontWeight: '600' }}>{project.progress}%</span>
-                  </div>
-                  <div style={{
-                    height: '8px',
-                    background: 'rgba(45, 212, 191, 0.1)',
-                    borderRadius: '4px',
-                    overflow: 'hidden'
-                  }}>
-                    <div style={{
-                      height: '100%',
-                      width: `${project.progress}%`,
-                      background: 'linear-gradient(90deg, #2dd4bf, #14b8a6)',
-                      transition: 'width 0.5s ease'
-                    }} />
-                  </div>
-                </div>
-              )}
-
-              {project.updates.length > 0 && (
-                <div>
-                  <h4 style={{
-                    fontSize: '1rem',
-                    marginBottom: '1rem',
-                    color: '#cbd5e1',
-                    fontWeight: '600'
-                  }}>
-                    Recent Updates
-                  </h4>
-                  {project.updates.map((update, i) => (
-                    <div
-                      key={i}
-                      style={{
-                        padding: '1rem',
-                        background: 'rgba(10, 15, 30, 0.5)',
-                        borderRadius: '10px',
-                        marginBottom: i < project.updates.length - 1 ? '0.75rem' : 0,
-                        borderLeft: '3px solid #2dd4bf'
-                      }}
-                    >
-                      <div style={{
-                        fontSize: '0.85rem',
-                        color: '#94a3b8',
-                        marginBottom: '0.25rem'
-                      }}>
-                        {update.date}
-                      </div>
-                      <div style={{ color: '#cbd5e1' }}>
-                        {update.message}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          ))}
+      {/* Loading State */}
+      {isLoading && (
+        <div style={{
+          textAlign: 'center',
+          padding: '4rem',
+          color: '#94a3b8'
+        }}>
+          Loading your data...
         </div>
       )}
 
       {/* Quotes Tab */}
-      {activeTab === 'quotes' && (
+      {!isLoading && activeTab === 'quotes' && (
         <div style={{ display: 'grid', gap: '1.5rem' }}>
-          {quotes.map(quote => (
-            <div
-              key={quote.id}
-              style={{
-                background: 'rgba(26, 31, 53, 0.5)',
-                border: '1px solid rgba(45, 212, 191, 0.15)',
-                borderRadius: '16px',
-                padding: '2rem',
-                backdropFilter: 'blur(10px)',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                flexWrap: 'wrap',
-                gap: '1.5rem'
-              }}
-            >
-              <div>
-                <h3 style={{
-                  fontSize: '1.3rem',
-                  marginBottom: '0.5rem',
-                  color: '#e8edf5',
-                  fontWeight: '600'
-                }}>
-                  {quote.service}
-                </h3>
-                <p style={{ color: '#94a3b8', fontSize: '0.9rem' }}>
-                  Submitted: {quote.date}
-                </p>
-              </div>
-              <div style={{ textAlign: 'right' }}>
-                <div style={{
-                  fontSize: '2rem',
-                  fontWeight: '700',
-                  color: '#2dd4bf',
-                  marginBottom: '0.5rem'
-                }}>
-                  ${quote.amount.toLocaleString()}
-                </div>
-                <div style={{
-                  padding: '0.4rem 1rem',
-                  borderRadius: '8px',
-                  background: quote.status === 'Accepted' ? 'rgba(45, 212, 191, 0.1)' : 'rgba(251, 191, 36, 0.1)',
-                  border: `1px solid ${quote.status === 'Accepted' ? 'rgba(45, 212, 191, 0.3)' : 'rgba(251, 191, 36, 0.3)'}`,
-                  color: quote.status === 'Accepted' ? '#2dd4bf' : '#fbbf24',
-                  fontSize: '0.85rem',
-                  fontWeight: '600',
-                  display: 'inline-block'
-                }}>
-                  {quote.status}
-                </div>
-              </div>
+          {quotes.length === 0 ? (
+            <div style={{
+              background: 'rgba(26, 31, 53, 0.5)',
+              border: '1px solid rgba(45, 212, 191, 0.15)',
+              borderRadius: '16px',
+              padding: '3rem',
+              textAlign: 'center',
+              backdropFilter: 'blur(10px)'
+            }}>
+              <h3 style={{ fontSize: '1.5rem', marginBottom: '0.5rem', color: '#e8edf5' }}>
+                No Quote Requests Yet
+              </h3>
+              <p style={{ color: '#94a3b8' }}>
+                Submit a quote request to get started!
+              </p>
             </div>
-          ))}
+          ) : (
+            quotes.map(quote => (
+              <div
+                key={quote.id}
+                style={{
+                  background: 'rgba(26, 31, 53, 0.5)',
+                  border: '1px solid rgba(45, 212, 191, 0.15)',
+                  borderRadius: '16px',
+                  padding: '2rem',
+                  backdropFilter: 'blur(10px)'
+                }}
+              >
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'start',
+                  flexWrap: 'wrap',
+                  gap: '1rem'
+                }}>
+                  <div>
+                    <h3 style={{
+                      fontSize: '1.3rem',
+                      marginBottom: '0.5rem',
+                      color: '#e8edf5',
+                      fontWeight: '600'
+                    }}>
+                      {quote.service_type || quote.title}
+                    </h3>
+                    <p style={{ color: '#94a3b8', fontSize: '0.9rem', marginBottom: '0.5rem' }}>
+                      Submitted: {new Date(quote.created_at).toLocaleDateString()}
+                    </p>
+                    <p style={{ color: '#cbd5e1', fontSize: '0.95rem' }}>
+                      {quote.description}
+                    </p>
+                  </div>
+                  <div style={{
+                    padding: '0.5rem 1rem',
+                    borderRadius: '8px',
+                    background: quote.status === 'pending' ? 'rgba(251, 191, 36, 0.1)' : 
+                               quote.status === 'quoted' ? 'rgba(45, 212, 191, 0.1)' :
+                               quote.status === 'accepted' ? 'rgba(34, 197, 94, 0.1)' : 'rgba(168, 85, 247, 0.1)',
+                    border: `1px solid ${quote.status === 'pending' ? 'rgba(251, 191, 36, 0.3)' : 
+                                          quote.status === 'quoted' ? 'rgba(45, 212, 191, 0.3)' :
+                                          quote.status === 'accepted' ? 'rgba(34, 197, 94, 0.3)' : 'rgba(168, 85, 247, 0.3)'}`,
+                    color: quote.status === 'pending' ? '#fbbf24' : 
+                           quote.status === 'quoted' ? '#2dd4bf' :
+                           quote.status === 'accepted' ? '#22c55e' : '#a855f7',
+                    fontSize: '0.85rem',
+                    fontWeight: '600',
+                    textTransform: 'capitalize'
+                  }}>
+                    {quote.status}
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      )}
+
+      {/* Projects Tab */}
+      {!isLoading && activeTab === 'projects' && (
+        <div style={{ display: 'grid', gap: '1.5rem' }}>
+          {projects.length === 0 ? (
+            <div style={{
+              background: 'rgba(26, 31, 53, 0.5)',
+              border: '1px solid rgba(45, 212, 191, 0.15)',
+              borderRadius: '16px',
+              padding: '3rem',
+              textAlign: 'center',
+              backdropFilter: 'blur(10px)'
+            }}>
+              <h3 style={{ fontSize: '1.5rem', marginBottom: '0.5rem', color: '#e8edf5' }}>
+                No Active Projects
+              </h3>
+              <p style={{ color: '#94a3b8' }}>
+                Once a quote is accepted, your project will appear here.
+              </p>
+            </div>
+          ) : (
+            projects.map(project => (
+              <div
+                key={project.id}
+                style={{
+                  background: 'rgba(26, 31, 53, 0.5)',
+                  border: '1px solid rgba(45, 212, 191, 0.15)',
+                  borderRadius: '16px',
+                  padding: '2rem',
+                  backdropFilter: 'blur(10px)'
+                }}
+              >
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'start',
+                  marginBottom: '1.5rem',
+                  flexWrap: 'wrap',
+                  gap: '1rem'
+                }}>
+                  <div>
+                    <h3 style={{
+                      fontSize: '1.5rem',
+                      marginBottom: '0.5rem',
+                      color: '#e8edf5',
+                      fontWeight: '600'
+                    }}>
+                      {project.title}
+                    </h3>
+                    {project.start_date && (
+                      <p style={{ color: '#94a3b8' }}>
+                        Started: {new Date(project.start_date).toLocaleDateString()}
+                      </p>
+                    )}
+                  </div>
+                  <div style={{
+                    padding: '0.5rem 1rem',
+                    borderRadius: '8px',
+                    background: project.status === 'in_progress' ? 'rgba(45, 212, 191, 0.1)' : 
+                               project.status === 'completed' ? 'rgba(34, 197, 94, 0.1)' : 'rgba(168, 85, 247, 0.1)',
+                    border: `1px solid ${project.status === 'in_progress' ? 'rgba(45, 212, 191, 0.3)' : 
+                                          project.status === 'completed' ? 'rgba(34, 197, 94, 0.3)' : 'rgba(168, 85, 247, 0.3)'}`,
+                    color: project.status === 'in_progress' ? '#2dd4bf' : 
+                           project.status === 'completed' ? '#22c55e' : '#a855f7',
+                    fontSize: '0.9rem',
+                    fontWeight: '600',
+                    textTransform: 'capitalize'
+                  }}>
+                    {project.status?.replace('_', ' ')}
+                  </div>
+                </div>
+
+                {project.progress_percentage > 0 && (
+                  <div style={{ marginBottom: '1.5rem' }}>
+                    <div style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      marginBottom: '0.5rem'
+                    }}>
+                      <span style={{ color: '#cbd5e1', fontSize: '0.9rem' }}>Progress</span>
+                      <span style={{ color: '#2dd4bf', fontWeight: '600' }}>{project.progress_percentage}%</span>
+                    </div>
+                    <div style={{
+                      height: '8px',
+                      background: 'rgba(45, 212, 191, 0.1)',
+                      borderRadius: '4px',
+                      overflow: 'hidden'
+                    }}>
+                      <div style={{
+                        height: '100%',
+                        width: `${project.progress_percentage}%`,
+                        background: 'linear-gradient(90deg, #2dd4bf, #14b8a6)',
+                        transition: 'width 0.5s ease'
+                      }} />
+                    </div>
+                  </div>
+                )}
+
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  paddingTop: '1rem',
+                  borderTop: '1px solid rgba(45, 212, 191, 0.1)'
+                }}>
+                  <span style={{ color: '#94a3b8' }}>
+                    Total: <span style={{ color: '#2dd4bf', fontWeight: '600' }}>${project.total_amount?.toLocaleString()}</span>
+                  </span>
+                  <span style={{ color: '#94a3b8' }}>
+                    Paid: <span style={{ color: '#22c55e', fontWeight: '600' }}>${project.amount_paid?.toLocaleString() || '0'}</span>
+                  </span>
+                </div>
+              </div>
+            ))
+          )}
         </div>
       )}
 
       {/* Messages Tab */}
-      {activeTab === 'messages' && (
+      {!isLoading && activeTab === 'messages' && (
         <div style={{
           background: 'rgba(26, 31, 53, 0.5)',
           border: '1px solid rgba(45, 212, 191, 0.15)',
@@ -1557,13 +1604,42 @@ function CustomerPortal({ userType }) {
           textAlign: 'center',
           backdropFilter: 'blur(10px)'
         }}>
-          <MessageSquare size={48} color="#2dd4bf" style={{ margin: '0 auto 1rem' }} />
-          <h3 style={{ fontSize: '1.5rem', marginBottom: '0.5rem', color: '#e8edf5' }}>
-            No Messages Yet
-          </h3>
-          <p style={{ color: '#94a3b8' }}>
-            Your messages with contractors will appear here
-          </p>
+          {messages.length === 0 ? (
+            <>
+              <h3 style={{ fontSize: '1.5rem', marginBottom: '0.5rem', color: '#e8edf5' }}>
+                No Messages Yet
+              </h3>
+              <p style={{ color: '#94a3b8' }}>
+                Your messages with our team will appear here.
+              </p>
+            </>
+          ) : (
+            <div style={{ textAlign: 'left' }}>
+              {messages.map(msg => (
+                <div
+                  key={msg.id}
+                  style={{
+                    padding: '1rem',
+                    background: 'rgba(10, 15, 30, 0.5)',
+                    borderRadius: '10px',
+                    marginBottom: '0.75rem',
+                    borderLeft: '3px solid #2dd4bf'
+                  }}
+                >
+                  <div style={{
+                    fontSize: '0.85rem',
+                    color: '#94a3b8',
+                    marginBottom: '0.25rem'
+                  }}>
+                    {msg.sender_first_name} {msg.sender_last_name} • {new Date(msg.created_at).toLocaleDateString()}
+                  </div>
+                  <div style={{ color: '#cbd5e1' }}>
+                    {msg.message}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>
