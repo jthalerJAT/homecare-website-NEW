@@ -136,7 +136,7 @@ export default function HomeCareWebsite() {
       case 'services':
         return <ServicesPage setCurrentPage={setCurrentPage} />;
       case 'request-quote':
-        return <RequestQuotePage />;
+        return <RequestQuotePage user={user} token={token} isAuthenticated={isAuthenticated} />;
       case 'portal':
         return isAuthenticated ? <CustomerPortal user={user} token={token} onLogout={handleLogout} /> : <LoginPage onLoginSuccess={handleLogin} setCurrentPage={setCurrentPage} />;
       case 'register':
@@ -772,50 +772,98 @@ function ServicesPage({ setCurrentPage }) {
 }
 
 // Request Quote Page
-function RequestQuotePage() {
+function RequestQuotePage({ user, token, isAuthenticated }) {
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     phone: '',
     address: '',
+    city: '',
+    state: '',
+    zipCode: '',
     serviceType: '',
     description: '',
     urgency: 'normal',
     preferredDate: ''
   });
   const [submitted, setSubmitted] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+
+  // Pre-fill form with user data if logged in
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      setFormData(prev => ({
+        ...prev,
+        name: `${user.first_name || ''} ${user.last_name || ''}`.trim(),
+        email: user.email || '',
+        phone: user.phone || '',
+        address: user.address || '',
+        city: user.city || '',
+        state: user.state || '',
+        zipCode: user.zip_code || ''
+      }));
+    }
+  }, [isAuthenticated, user]);
 
   const handleSubmit = async (e) => {
-  e.preventDefault();
-  
-  try {
-    // Prepare email parameters matching our template
-    const templateParams = {
-      from_name: formData.name,
-      email: formData.email,
-      phone: formData.phone,
-      address: formData.address,
-      service_type: formData.serviceType,
-      urgency: formData.urgency,
-      preferred_date: formData.preferredDate,
-      message: formData.description
-    };
+    e.preventDefault();
+    setIsLoading(true);
     
-    // Send email via EmailJS
-    await window.emailjs.send(
-      'service_nwt18xw',
-      'template_x7a8uha',
-      templateParams
-    );
-    
-    console.log('Quote request sent successfully!');
-    setSubmitted(true);
-    
-  } catch (error) {
-    console.error('Error sending quote request:', error);
-    alert('Sorry, there was an error submitting your request. Please email us directly at info@greenwichpropertycare.com');
-  }
-};
+    try {
+      // If logged in, save to database
+      if (isAuthenticated && token) {
+        const quoteData = {
+          email: formData.email,
+          firstName: user?.first_name || formData.name.split(' ')[0],
+          lastName: user?.last_name || formData.name.split(' ').slice(1).join(' '),
+          phone: formData.phone,
+          address: formData.address,
+          city: formData.city,
+          state: formData.state,
+          zipCode: formData.zipCode,
+          serviceType: formData.serviceType,
+          title: formData.serviceType,
+          description: formData.description,
+          urgency: formData.urgency,
+          preferredStartDate: formData.preferredDate
+        };
+        
+        const result = await api.submitQuote(quoteData, token);
+        
+        if (result.quoteRequest) {
+          console.log('Quote saved to database!');
+        }
+      }
+      
+      // Also send email notification (for both logged in and guest)
+      const templateParams = {
+        from_name: formData.name,
+        email: formData.email,
+        phone: formData.phone,
+        address: formData.address,
+        service_type: formData.serviceType,
+        urgency: formData.urgency,
+        preferred_date: formData.preferredDate,
+        message: formData.description,
+        is_registered_user: isAuthenticated ? 'Yes' : 'No'
+      };
+      
+      await window.emailjs.send(
+        'service_nwt18xw',
+        'template_x7a8uha',
+        templateParams
+      );
+      
+      console.log('Quote request sent successfully!');
+      setSubmitted(true);
+      
+    } catch (error) {
+      console.error('Error sending quote request:', error);
+      alert('Sorry, there was an error submitting your request. Please email us directly at info@greenwichpropertycare.com');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   if (submitted) {
     return (
@@ -860,7 +908,10 @@ function RequestQuotePage() {
             fontSize: '0.95rem',
             color: '#94a3b8'
           }}>
-            Check your email at <strong style={{ color: '#2dd4bf' }}>{formData.email}</strong> for updates.
+            {isAuthenticated 
+              ? <>Your quote has been saved to your <strong style={{ color: '#2dd4bf' }}>customer portal</strong>. You can track its status there.</>
+              : <>Check your email at <strong style={{ color: '#2dd4bf' }}>{formData.email}</strong> for updates.</>
+            }
           </p>
         </div>
       </div>
@@ -887,8 +938,24 @@ function RequestQuotePage() {
           animationDelay: '0.2s',
           opacity: 0
         }}>
-          Tell us about your project and we'll get back to you with a detailed estimate
+          {isAuthenticated 
+            ? `Hi ${user?.first_name || 'there'}! Tell us about your project.`
+            : 'Tell us about your project and we\'ll get back to you with a detailed estimate'
+          }
         </p>
+        {isAuthenticated && (
+          <p style={{ 
+            fontSize: '0.9rem', 
+            color: '#2dd4bf', 
+            marginTop: '0.5rem',
+            background: 'rgba(45, 212, 191, 0.1)',
+            padding: '0.5rem 1rem',
+            borderRadius: '8px',
+            display: 'inline-block'
+          }}>
+            ✓ Logged in — Your info is pre-filled
+          </p>
+        )}
       </div>
 
       <form onSubmit={handleSubmit} className="animate-scale" style={{
@@ -901,39 +968,60 @@ function RequestQuotePage() {
         animationDelay: '0.3s'
       }}>
         <div style={{ display: 'grid', gap: '1.5rem' }}>
-          <InputField
-            label="Full Name"
-            type="text"
-            required
-            value={formData.name}
-            onChange={(e) => setFormData({...formData, name: e.target.value})}
-          />
           
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
-            <InputField
-              label="Email"
-              type="email"
-              required
-              value={formData.email}
-              onChange={(e) => setFormData({...formData, email: e.target.value})}
-            />
-            <InputField
-              label="Phone"
-              type="tel"
-              required
-              value={formData.phone}
-              onChange={(e) => setFormData({...formData, phone: e.target.value})}
-            />
-          </div>
+          {/* Contact Info Section - Collapsed if logged in */}
+          {!isAuthenticated ? (
+            <>
+              <InputField
+                label="Full Name"
+                type="text"
+                required
+                value={formData.name}
+                onChange={(e) => setFormData({...formData, name: e.target.value})}
+              />
+              
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+                <InputField
+                  label="Email"
+                  type="email"
+                  required
+                  value={formData.email}
+                  onChange={(e) => setFormData({...formData, email: e.target.value})}
+                />
+                <InputField
+                  label="Phone"
+                  type="tel"
+                  required
+                  value={formData.phone}
+                  onChange={(e) => setFormData({...formData, phone: e.target.value})}
+                />
+              </div>
 
-          <InputField
-            label="Property Address"
-            type="text"
-            required
-            value={formData.address}
-            onChange={(e) => setFormData({...formData, address: e.target.value})}
-          />
+              <InputField
+                label="Property Address"
+                type="text"
+                required
+                value={formData.address}
+                onChange={(e) => setFormData({...formData, address: e.target.value})}
+              />
+            </>
+          ) : (
+            <div style={{
+              background: 'rgba(45, 212, 191, 0.05)',
+              border: '1px solid rgba(45, 212, 191, 0.2)',
+              borderRadius: '12px',
+              padding: '1.25rem',
+              marginBottom: '0.5rem'
+            }}>
+              <p style={{ color: '#94a3b8', fontSize: '0.85rem', marginBottom: '0.5rem' }}>Submitting as:</p>
+              <p style={{ color: '#e8edf5', fontWeight: '600', marginBottom: '0.25rem' }}>{formData.name}</p>
+              <p style={{ color: '#cbd5e1', fontSize: '0.95rem' }}>{formData.email}</p>
+              {formData.phone && <p style={{ color: '#cbd5e1', fontSize: '0.95rem' }}>{formData.phone}</p>}
+              {formData.address && <p style={{ color: '#cbd5e1', fontSize: '0.95rem' }}>{formData.address}</p>}
+            </div>
+          )}
 
+          {/* Project Details - Always shown */}
           <div>
             <label style={{
               display: 'block',
@@ -942,7 +1030,7 @@ function RequestQuotePage() {
               fontSize: '0.95rem',
               fontWeight: '500'
             }}>
-              Service Type
+              Service Type <span style={{ color: '#ef4444' }}>*</span>
             </label>
             <select
               required
@@ -986,7 +1074,7 @@ function RequestQuotePage() {
               fontSize: '0.95rem',
               fontWeight: '500'
             }}>
-              Project Description
+              Project Description <span style={{ color: '#ef4444' }}>*</span>
             </label>
             <textarea
               required
@@ -1059,6 +1147,7 @@ function RequestQuotePage() {
 
           <button
             type="submit"
+            disabled={isLoading}
             style={{
               marginTop: '1rem',
               padding: '1.1rem 2rem',
@@ -1066,69 +1155,30 @@ function RequestQuotePage() {
               fontWeight: '600',
               border: 'none',
               borderRadius: '12px',
-              cursor: 'pointer',
-              background: 'linear-gradient(135deg, #2dd4bf 0%, #14b8a6 100%)',
+              cursor: isLoading ? 'wait' : 'pointer',
+              background: isLoading 
+                ? 'rgba(45, 212, 191, 0.5)'
+                : 'linear-gradient(135deg, #2dd4bf 0%, #14b8a6 100%)',
               color: '#0a0f1e',
               transition: 'all 0.3s ease',
               boxShadow: '0 8px 24px rgba(45, 212, 191, 0.3)',
               width: '100%'
             }}
             onMouseEnter={(e) => {
-              e.target.style.transform = 'translateY(-2px)';
-              e.target.style.boxShadow = '0 12px 32px rgba(45, 212, 191, 0.4)';
+              if (!isLoading) {
+                e.target.style.transform = 'translateY(-2px)';
+                e.target.style.boxShadow = '0 12px 32px rgba(45, 212, 191, 0.4)';
+              }
             }}
             onMouseLeave={(e) => {
               e.target.style.transform = 'translateY(0)';
               e.target.style.boxShadow = '0 8px 24px rgba(45, 212, 191, 0.3)';
             }}
           >
-            Submit Quote Request
+            {isLoading ? 'Submitting...' : 'Submit Quote Request'}
           </button>
         </div>
       </form>
-    </div>
-  );
-}
-
-// Input Field Component
-function InputField({ label, type, required, value, onChange, ...props }) {
-  return (
-    <div>
-      <label style={{
-        display: 'block',
-        marginBottom: '0.5rem',
-        color: '#cbd5e1',
-        fontSize: '0.95rem',
-        fontWeight: '500'
-      }}>
-        {label} {required && <span style={{ color: '#ef4444' }}>*</span>}
-      </label>
-      <input
-        type={type}
-        required={required}
-        value={value}
-        onChange={onChange}
-        {...props}
-        style={{
-          width: '100%',
-          padding: '0.875rem 1rem',
-          fontSize: '1rem',
-          border: '1px solid rgba(45, 212, 191, 0.2)',
-          borderRadius: '10px',
-          background: 'rgba(10, 15, 30, 0.6)',
-          color: '#e8edf5',
-          outline: 'none',
-          transition: 'all 0.3s ease'
-        }}
-        onFocus={(e) => {
-          e.target.style.borderColor = 'rgba(45, 212, 191, 0.5)';
-          e.target.style.background = 'rgba(10, 15, 30, 0.8)';
-        }}
-        onBlur={(e) => {
-          e.target.style.borderColor = 'rgba(45, 212, 191, 0.2)';
-          e.target.style.background = 'rgba(10, 15, 30, 0.6)';
-        }}
-      />
     </div>
   );
 }
