@@ -138,7 +138,7 @@ export default function HomeCareWebsite() {
       case 'request-quote':
         return <RequestQuotePage />;
       case 'portal':
-        return isLoggedIn ? <CustomerPortal userType={userType} /> : <LoginPage setIsLoggedIn={setIsLoggedIn} setUserType={setUserType} />;
+        return isAuthenticated ? <CustomerPortal user={user} token={token} onLogout={handleLogout} /> : <LoginPage onLoginSuccess={handleLogin} setCurrentPage={setCurrentPage} />;
       case 'about':
         return <AboutPage />;
       default:
@@ -1132,105 +1132,115 @@ function InputField({ label, type, required, value, onChange, ...props }) {
 }
 
 // Login Page
-function LoginPage({ setIsLoggedIn, setUserType }) {
-  const [loginType, setLoginType] = useState('customer');
+function LoginPage({ onLoginSuccess, setCurrentPage }) {
   const [credentials, setCredentials] = useState({ email: '', password: '' });
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
-    // Simulated login - connect to your auth system
-    setIsLoggedIn(true);
-    setUserType(loginType);
+    setIsLoading(true);
+    setError('');
+    
+    try {
+      const result = await api.login(credentials.email, credentials.password);
+      
+      if (result.token) {
+        onLoginSuccess(result.user, result.token);
+      } else {
+        setError(result.error || 'Login failed. Please check your credentials.');
+      }
+    } catch (err) {
+      setError('Login failed. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
     <div style={{ padding: '4rem 2rem', maxWidth: '500px', margin: '0 auto' }}>
       <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
-        <h1 className="animate-in" style={{
+        <h1 style={{
           fontFamily: '"DM Serif Display", serif',
           fontSize: '3rem',
           marginBottom: '1rem',
           background: 'linear-gradient(135deg, #ffffff 0%, #2dd4bf 100%)',
           WebkitBackgroundClip: 'text',
-          WebkitTextFillColor: 'transparent',
-          opacity: 0
+          WebkitTextFillColor: 'transparent'
         }}>
-          Portal Login
+          Customer Login
         </h1>
+        <p style={{ color: '#94a3b8' }}>Access your dashboard to view quotes and projects</p>
       </div>
 
-      <form onSubmit={handleLogin} className="animate-scale" style={{
+      {error && (
+        <div style={{
+          background: 'rgba(239, 68, 68, 0.1)',
+          border: '1px solid rgba(239, 68, 68, 0.3)',
+          borderRadius: '12px',
+          padding: '1rem',
+          marginBottom: '1.5rem',
+          color: '#ef4444',
+          textAlign: 'center'
+        }}>
+          {error}
+        </div>
+      )}
+
+      <form onSubmit={handleLogin} style={{
         background: 'rgba(26, 31, 53, 0.5)',
         border: '1px solid rgba(45, 212, 191, 0.15)',
         borderRadius: '24px',
         padding: '3rem',
-        backdropFilter: 'blur(10px)',
-        opacity: 0,
-        animationDelay: '0.2s'
+        backdropFilter: 'blur(10px)'
       }}>
-        <div style={{ marginBottom: '2rem' }}>
-          <div style={{
-            display: 'flex',
-            gap: '1rem',
-            marginBottom: '2rem'
-          }}>
-            <button
-              type="button"
-              onClick={() => setLoginType('customer')}
-              style={{
-                flex: 1,
-                padding: '0.875rem',
-                border: loginType === 'customer' ? '2px solid #2dd4bf' : '1px solid rgba(255, 255, 255, 0.1)',
-                borderRadius: '10px',
-                background: loginType === 'customer' ? 'rgba(45, 212, 191, 0.1)' : 'transparent',
-                color: loginType === 'customer' ? '#2dd4bf' : '#94a3b8',
-                cursor: 'pointer',
-                fontWeight: '600',
-                transition: 'all 0.3s ease'
-              }}
-            >
-              Customer
-            </button>
-            <button
-              type="button"
-              onClick={() => setLoginType('contractor')}
-              style={{
-                flex: 1,
-                padding: '0.875rem',
-                border: loginType === 'contractor' ? '2px solid #2dd4bf' : '1px solid rgba(255, 255, 255, 0.1)',
-                borderRadius: '10px',
-                background: loginType === 'contractor' ? 'rgba(45, 212, 191, 0.1)' : 'transparent',
-                color: loginType === 'contractor' ? '#2dd4bf' : '#94a3b8',
-                cursor: 'pointer',
-                fontWeight: '600',
-                transition: 'all 0.3s ease'
-              }}
-            >
-              Contractor
-            </button>
-          </div>
-
-          <InputField
-            label="Email"
+        <div style={{ marginBottom: '1.5rem' }}>
+          <label style={{ display: 'block', marginBottom: '0.5rem', color: '#e8edf5', fontWeight: 500 }}>
+            Email
+          </label>
+          <input
             type="email"
             required
             value={credentials.email}
             onChange={(e) => setCredentials({...credentials, email: e.target.value})}
+            placeholder="your@email.com"
+            style={{
+              width: '100%',
+              padding: '0.875rem',
+              borderRadius: '10px',
+              border: '1px solid rgba(45, 212, 191, 0.3)',
+              background: 'rgba(15, 23, 42, 0.5)',
+              color: '#e8edf5',
+              fontSize: '1rem'
+            }}
           />
         </div>
 
         <div style={{ marginBottom: '2rem' }}>
-          <InputField
-            label="Password"
+          <label style={{ display: 'block', marginBottom: '0.5rem', color: '#e8edf5', fontWeight: 500 }}>
+            Password
+          </label>
+          <input
             type="password"
             required
             value={credentials.password}
             onChange={(e) => setCredentials({...credentials, password: e.target.value})}
+            placeholder="Your password"
+            style={{
+              width: '100%',
+              padding: '0.875rem',
+              borderRadius: '10px',
+              border: '1px solid rgba(45, 212, 191, 0.3)',
+              background: 'rgba(15, 23, 42, 0.5)',
+              color: '#e8edf5',
+              fontSize: '1rem'
+            }}
           />
         </div>
 
         <button
           type="submit"
+          disabled={isLoading}
           style={{
             width: '100%',
             padding: '1.1rem',
@@ -1238,22 +1248,16 @@ function LoginPage({ setIsLoggedIn, setUserType }) {
             fontWeight: '600',
             border: 'none',
             borderRadius: '12px',
-            cursor: 'pointer',
-            background: 'linear-gradient(135deg, #2dd4bf 0%, #14b8a6 100%)',
+            cursor: isLoading ? 'wait' : 'pointer',
+            background: isLoading 
+              ? 'rgba(45, 212, 191, 0.5)' 
+              : 'linear-gradient(135deg, #2dd4bf 0%, #14b8a6 100%)',
             color: '#0a0f1e',
             transition: 'all 0.3s ease',
             boxShadow: '0 8px 24px rgba(45, 212, 191, 0.3)'
           }}
-          onMouseEnter={(e) => {
-            e.target.style.transform = 'translateY(-2px)';
-            e.target.style.boxShadow = '0 12px 32px rgba(45, 212, 191, 0.4)';
-          }}
-          onMouseLeave={(e) => {
-            e.target.style.transform = 'translateY(0)';
-            e.target.style.boxShadow = '0 8px 24px rgba(45, 212, 191, 0.3)';
-          }}
         >
-          Sign In
+          {isLoading ? 'Signing in...' : 'Sign In'}
         </button>
 
         <p style={{
@@ -1262,7 +1266,13 @@ function LoginPage({ setIsLoggedIn, setUserType }) {
           color: '#94a3b8',
           fontSize: '0.9rem'
         }}>
-          Don't have an account? <span style={{ color: '#2dd4bf', cursor: 'pointer' }}>Sign up</span>
+          Don't have an account?{' '}
+          <span 
+            onClick={() => setCurrentPage('register')}
+            style={{ color: '#2dd4bf', cursor: 'pointer', textDecoration: 'underline' }}
+          >
+            Register here
+          </span>
         </p>
       </form>
     </div>
