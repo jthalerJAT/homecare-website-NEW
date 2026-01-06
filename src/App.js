@@ -1696,26 +1696,27 @@ function ForgotPasswordPage({ setCurrentPage }) {
       const data = await response.json();
       
       if (response.ok) {
-        // Get the reset code from Railway logs for now
-        // In a full production setup, the backend would send the email
-        // But we can also send it from frontend using EmailJS
-        
-        // Try to send email with the code (if backend returns it in dev mode)
-        if (data._devCode) {
+        // Send email with the reset code via EmailJS
+        if (data._devCode && window.emailjs) {
           try {
-            await window.emailjs.send(
+            const emailParams = {
+              to_email: email,
+              to_name: 'Customer',
+              reset_code: data._devCode
+            };
+            console.log('Sending email with params:', emailParams);
+            
+            const emailResult = await window.emailjs.send(
               'service_nwt18xw',
               'template_xlo5z6l',
-              {
-                to_email: email,
-                to_name: 'Customer',
-                reset_code: data._devCode
-              }
+              emailParams
             );
-            console.log('Reset code email sent!');
+            console.log('Email sent successfully:', emailResult);
           } catch (emailError) {
-            console.log('Email send failed, check Railway logs for code');
+            console.error('EmailJS error:', emailError);
           }
+        } else {
+          console.log('No code or emailjs not available:', { code: data._devCode, emailjs: !!window.emailjs });
         }
         
         setMessage('A reset code has been sent to your email. Check your inbox (and spam folder).');
@@ -1724,6 +1725,7 @@ function ForgotPasswordPage({ setCurrentPage }) {
         setError(data.error || 'Failed to request reset code');
       }
     } catch (err) {
+      console.error('Request error:', err);
       setError('Failed to connect. Please try again.');
     } finally {
       setIsLoading(false);
