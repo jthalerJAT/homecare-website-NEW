@@ -1391,7 +1391,9 @@ function LoginPage({ onLoginSuccess, setCurrentPage }) {
               Register here
             </span>
           </p>
-        </div>
+      </div>
+      </form>
+    </div>
   );
 }
 
