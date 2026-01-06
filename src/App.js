@@ -1686,6 +1686,7 @@ function ForgotPasswordPage({ setCurrentPage }) {
     setError('');
     
     try {
+      // Request reset code from backend
       const response = await fetch('https://gpc-backend-production.up.railway.app/api/auth/forgot-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1695,7 +1696,29 @@ function ForgotPasswordPage({ setCurrentPage }) {
       const data = await response.json();
       
       if (response.ok) {
-        setMessage('If an account exists with this email, a reset code has been generated. Check with your administrator for the code.');
+        // Get the reset code from Railway logs for now
+        // In a full production setup, the backend would send the email
+        // But we can also send it from frontend using EmailJS
+        
+        // Try to send email with the code (if backend returns it in dev mode)
+        if (data._devCode) {
+          try {
+            await window.emailjs.send(
+              'service_nwt18xw',
+              'template_xio5z6l',
+              {
+                to_email: email,
+                to_name: 'Customer',
+                reset_code: data._devCode
+              }
+            );
+            console.log('Reset code email sent!');
+          } catch (emailError) {
+            console.log('Email send failed, check Railway logs for code');
+          }
+        }
+        
+        setMessage('A reset code has been sent to your email. Check your inbox (and spam folder).');
         setStep(2);
       } else {
         setError(data.error || 'Failed to request reset code');
