@@ -813,34 +813,40 @@ function RequestQuotePage({ user, token, isAuthenticated }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
-    
+
     try {
-      // If logged in, save to database
-      if (isAuthenticated && token) {
-        const quoteData = {
-          email: formData.email,
-          firstName: user?.first_name || formData.name.split(' ')[0],
-          lastName: user?.last_name || formData.name.split(' ').slice(1).join(' '),
-          phone: formData.phone,
-          address: formData.address,
-          city: formData.city,
-          state: formData.state,
-          zipCode: formData.zipCode,
-          serviceType: formData.serviceType,
-          title: formData.serviceType,
-          description: formData.description,
-          urgency: formData.urgency,
-          preferredStartDate: formData.preferredDate
-        };
-        
-        const result = await api.submitQuote(quoteData, token);
-        
-        if (result.quoteRequest) {
-          console.log('Quote saved to database!');
-        }
+      // Always save to database (for both guests and logged-in users)
+      const quoteData = {
+        email: formData.email,
+        firstName: isAuthenticated ? (user?.first_name || formData.name.split(' ')[0]) : formData.name.split(' ')[0],
+        lastName: isAuthenticated ? (user?.last_name || formData.name.split(' ').slice(1).join(' ')) : formData.name.split(' ').slice(1).join(' ') || 'Customer',
+        phone: formData.phone,
+        address: formData.address,
+        city: formData.city || '',
+        state: formData.state || '',
+        zipCode: formData.zipCode || '',
+        serviceType: formData.serviceType,
+        title: formData.serviceType,
+        description: formData.description,
+        urgency: formData.urgency,
+        preferredStartDate: formData.preferredDate || null
+      };
+      
+      // Save to database
+      const result = await fetch('https://gpc-backend-production.up.railway.app/api/quotes/request', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': token ? `Bearer ${token}` : ''
+        },
+        body: JSON.stringify(quoteData)
+      });
+      
+      if (result.ok) {
+        console.log('Quote saved to database!');
       }
       
-      // Also send email notification (for both logged in and guest)
+      // Also send email notification
       const templateParams = {
         from_name: formData.name,
         email: formData.email,
@@ -861,7 +867,7 @@ function RequestQuotePage({ user, token, isAuthenticated }) {
       
       console.log('Quote request sent successfully!');
       setSubmitted(true);
-      
+           
     } catch (error) {
       console.error('Error sending quote request:', error);
       alert('Sorry, there was an error submitting your request. Please email us directly at info@greenwichpropertycare.com');
