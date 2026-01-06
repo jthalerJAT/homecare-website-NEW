@@ -1705,7 +1705,7 @@ function ForgotPasswordPage({ setCurrentPage }) {
           try {
             await window.emailjs.send(
               'service_nwt18xw',
-              'template_xio5z6l',
+              'template_xlo5z6l',
               {
                 to_email: email,
                 to_name: 'Customer',
