@@ -146,6 +146,8 @@ export default function HomeCareWebsite() {
     : <CustomerPortal user={user} token={token} onLogout={handleLogout} />;
       case 'register':
         return <RegisterPage onRegisterSuccess={handleLogin} setCurrentPage={setCurrentPage} />;
+      case 'forgot-password':
+        return <ForgotPasswordPage setCurrentPage={setCurrentPage} />;
       case 'about':
         return <AboutPage />;
       default:
@@ -1366,22 +1368,30 @@ function LoginPage({ onLoginSuccess, setCurrentPage }) {
           {isLoading ? 'Signing in...' : 'Sign In'}
         </button>
 
-        <p style={{
+        <div style={{
           marginTop: '1.5rem',
           textAlign: 'center',
           color: '#94a3b8',
           fontSize: '0.9rem'
         }}>
-          Don't have an account?{' '}
-          <span 
-            onClick={() => setCurrentPage('register')}
-            style={{ color: '#2dd4bf', cursor: 'pointer', textDecoration: 'underline' }}
-          >
-            Register here
-          </span>
-        </p>
-      </form>
-    </div>
+          <p style={{ marginBottom: '0.5rem' }}>
+            <span 
+              onClick={() => setCurrentPage('forgot-password')}
+              style={{ color: '#2dd4bf', cursor: 'pointer', textDecoration: 'underline' }}
+            >
+              Forgot your password?
+            </span>
+          </p>
+          <p>
+            Don't have an account?{' '}
+            <span 
+              onClick={() => setCurrentPage('register')}
+              style={{ color: '#2dd4bf', cursor: 'pointer', textDecoration: 'underline' }}
+            >
+              Register here
+            </span>
+          </p>
+        </div>
   );
 }
 
@@ -1653,6 +1663,339 @@ function RegisterPage({ onRegisterSuccess, setCurrentPage }) {
           </span>
         </p>
       </form>
+    </div>
+  );
+}
+
+// Forgot Password Page
+function ForgotPasswordPage({ setCurrentPage }) {
+  const [step, setStep] = useState(1); // 1: Enter email, 2: Enter code, 3: New password
+  const [email, setEmail] = useState('');
+  const [code, setCode] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [message, setMessage] = useState('');
+
+  const handleRequestCode = async (e) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setError('');
+    
+    try {
+      const response = await fetch('https://gpc-backend-production.up.railway.app/api/auth/forgot-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
+      });
+      
+      const data = await response.json();
+      
+      if (response.ok) {
+        setMessage('If an account exists with this email, a reset code has been generated. Check with your administrator for the code.');
+        setStep(2);
+      } else {
+        setError(data.error || 'Failed to request reset code');
+      }
+    } catch (err) {
+      setError('Failed to connect. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleVerifyCode = async (e) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setError('');
+    
+    try {
+      const response = await fetch('https://gpc-backend-production.up.railway.app/api/auth/verify-reset-code', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, code })
+      });
+      
+      const data = await response.json();
+      
+      if (response.ok && data.valid) {
+        setMessage('Code verified! Enter your new password.');
+        setStep(3);
+      } else {
+        setError(data.error || 'Invalid code');
+      }
+    } catch (err) {
+      setError('Failed to verify code. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleResetPassword = async (e) => {
+    e.preventDefault();
+    setError('');
+
+    if (newPassword !== confirmPassword) {
+      setError('Passwords do not match');
+      return;
+    }
+
+    if (newPassword.length < 6) {
+      setError('Password must be at least 6 characters');
+      return;
+    }
+
+    setIsLoading(true);
+    
+    try {
+      const response = await fetch('https://gpc-backend-production.up.railway.app/api/auth/reset-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, code, newPassword })
+      });
+      
+      const data = await response.json();
+      
+      if (response.ok) {
+        setMessage('Password reset successful! Redirecting to login...');
+        setTimeout(() => setCurrentPage('portal'), 2000);
+      } else {
+        setError(data.error || 'Failed to reset password');
+      }
+    } catch (err) {
+      setError('Failed to reset password. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const inputStyle = {
+    width: '100%',
+    padding: '0.875rem',
+    borderRadius: '10px',
+    border: '1px solid rgba(45, 212, 191, 0.3)',
+    background: 'rgba(15, 23, 42, 0.5)',
+    color: '#e8edf5',
+    fontSize: '1rem',
+    boxSizing: 'border-box'
+  };
+
+  return (
+    <div style={{ padding: '4rem 2rem', maxWidth: '500px', margin: '0 auto' }}>
+      <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
+        <h1 style={{
+          fontFamily: '"DM Serif Display", serif',
+          fontSize: '2.5rem',
+          marginBottom: '1rem',
+          background: 'linear-gradient(135deg, #ffffff 0%, #2dd4bf 100%)',
+          WebkitBackgroundClip: 'text',
+          WebkitTextFillColor: 'transparent'
+        }}>
+          Reset Password
+        </h1>
+        <p style={{ color: '#94a3b8' }}>
+          {step === 1 && "Enter your email to receive a reset code"}
+          {step === 2 && "Enter the 6-digit code"}
+          {step === 3 && "Create your new password"}
+        </p>
+      </div>
+
+      {/* Progress Indicator */}
+      <div style={{ 
+        display: 'flex', 
+        justifyContent: 'center', 
+        gap: '0.5rem', 
+        marginBottom: '2rem' 
+      }}>
+        {[1, 2, 3].map(s => (
+          <div
+            key={s}
+            style={{
+              width: '40px',
+              height: '4px',
+              borderRadius: '2px',
+              background: s <= step ? '#2dd4bf' : 'rgba(45, 212, 191, 0.2)'
+            }}
+          />
+        ))}
+      </div>
+
+      {error && (
+        <div style={{
+          background: 'rgba(239, 68, 68, 0.1)',
+          border: '1px solid rgba(239, 68, 68, 0.3)',
+          borderRadius: '12px',
+          padding: '1rem',
+          marginBottom: '1.5rem',
+          color: '#ef4444',
+          textAlign: 'center'
+        }}>
+          {error}
+        </div>
+      )}
+
+      {message && (
+        <div style={{
+          background: 'rgba(45, 212, 191, 0.1)',
+          border: '1px solid rgba(45, 212, 191, 0.3)',
+          borderRadius: '12px',
+          padding: '1rem',
+          marginBottom: '1.5rem',
+          color: '#2dd4bf',
+          textAlign: 'center'
+        }}>
+          {message}
+        </div>
+      )}
+
+      <div style={{
+        background: 'rgba(26, 31, 53, 0.5)',
+        border: '1px solid rgba(45, 212, 191, 0.15)',
+        borderRadius: '24px',
+        padding: '2rem',
+        backdropFilter: 'blur(10px)'
+      }}>
+        {/* Step 1: Enter Email */}
+        {step === 1 && (
+          <form onSubmit={handleRequestCode}>
+            <div style={{ marginBottom: '1.5rem' }}>
+              <label style={{ display: 'block', marginBottom: '0.5rem', color: '#e8edf5', fontWeight: 500 }}>
+                Email Address
+              </label>
+              <input
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="your@email.com"
+                style={inputStyle}
+              />
+            </div>
+            <button
+              type="submit"
+              disabled={isLoading}
+              style={{
+                width: '100%',
+                padding: '1rem',
+                fontSize: '1.1rem',
+                fontWeight: '600',
+                border: 'none',
+                borderRadius: '12px',
+                cursor: isLoading ? 'wait' : 'pointer',
+                background: isLoading ? 'rgba(45, 212, 191, 0.5)' : 'linear-gradient(135deg, #2dd4bf 0%, #14b8a6 100%)',
+                color: '#0a0f1e'
+              }}
+            >
+              {isLoading ? 'Sending...' : 'Send Reset Code'}
+            </button>
+          </form>
+        )}
+
+        {/* Step 2: Enter Code */}
+        {step === 2 && (
+          <form onSubmit={handleVerifyCode}>
+            <div style={{ marginBottom: '1.5rem' }}>
+              <label style={{ display: 'block', marginBottom: '0.5rem', color: '#e8edf5', fontWeight: 500 }}>
+                6-Digit Reset Code
+              </label>
+              <input
+                type="text"
+                required
+                value={code}
+                onChange={(e) => setCode(e.target.value)}
+                placeholder="123456"
+                maxLength={6}
+                style={{...inputStyle, textAlign: 'center', fontSize: '1.5rem', letterSpacing: '0.5rem'}}
+              />
+              <p style={{ color: '#94a3b8', fontSize: '0.85rem', marginTop: '0.5rem' }}>
+                Check Railway logs for the reset code (or contact admin)
+              </p>
+            </div>
+            <button
+              type="submit"
+              disabled={isLoading}
+              style={{
+                width: '100%',
+                padding: '1rem',
+                fontSize: '1.1rem',
+                fontWeight: '600',
+                border: 'none',
+                borderRadius: '12px',
+                cursor: isLoading ? 'wait' : 'pointer',
+                background: isLoading ? 'rgba(45, 212, 191, 0.5)' : 'linear-gradient(135deg, #2dd4bf 0%, #14b8a6 100%)',
+                color: '#0a0f1e'
+              }}
+            >
+              {isLoading ? 'Verifying...' : 'Verify Code'}
+            </button>
+          </form>
+        )}
+
+        {/* Step 3: New Password */}
+        {step === 3 && (
+          <form onSubmit={handleResetPassword}>
+            <div style={{ marginBottom: '1rem' }}>
+              <label style={{ display: 'block', marginBottom: '0.5rem', color: '#e8edf5', fontWeight: 500 }}>
+                New Password
+              </label>
+              <input
+                type="password"
+                required
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                placeholder="Min 6 characters"
+                style={inputStyle}
+              />
+            </div>
+            <div style={{ marginBottom: '1.5rem' }}>
+              <label style={{ display: 'block', marginBottom: '0.5rem', color: '#e8edf5', fontWeight: 500 }}>
+                Confirm New Password
+              </label>
+              <input
+                type="password"
+                required
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="Confirm password"
+                style={inputStyle}
+              />
+            </div>
+            <button
+              type="submit"
+              disabled={isLoading}
+              style={{
+                width: '100%',
+                padding: '1rem',
+                fontSize: '1.1rem',
+                fontWeight: '600',
+                border: 'none',
+                borderRadius: '12px',
+                cursor: isLoading ? 'wait' : 'pointer',
+                background: isLoading ? 'rgba(45, 212, 191, 0.5)' : 'linear-gradient(135deg, #2dd4bf 0%, #14b8a6 100%)',
+                color: '#0a0f1e'
+              }}
+            >
+              {isLoading ? 'Resetting...' : 'Reset Password'}
+            </button>
+          </form>
+        )}
+
+        <p style={{
+          marginTop: '1.5rem',
+          textAlign: 'center',
+          color: '#94a3b8',
+          fontSize: '0.9rem'
+        }}>
+          Remember your password?{' '}
+          <span 
+            onClick={() => setCurrentPage('portal')}
+            style={{ color: '#2dd4bf', cursor: 'pointer', textDecoration: 'underline' }}
+          >
+            Back to Login
+          </span>
+        </p>
+      </div>
     </div>
   );
 }
