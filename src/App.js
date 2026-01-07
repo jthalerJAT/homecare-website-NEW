@@ -1338,24 +1338,26 @@ function QuoteCard({ quote, token, onUpdate }) {
       </p>
 
       {/* Show "View Quote" button if status is 'quoted' */}
-      {quote.status === 'quoted' && (
-        <button
-          onClick={fetchQuoteDetails}
-          disabled={isLoading}
-          style={{
-            padding: '0.75rem 1.5rem',
-            background: 'linear-gradient(135deg, #2dd4bf 0%, #14b8a6 100%)',
-            border: 'none',
-            borderRadius: '10px',
-            color: '#0a0f1e',
-            fontWeight: '600',
-            cursor: 'pointer',
-            marginBottom: showDetails ? '1rem' : 0
-          }}
-        >
-          {isLoading ? 'Loading...' : showDetails ? 'Hide Quote Details' : '💰 View Quote & Pricing'}
-        </button>
-      )}
+{quote.status === 'quoted' ? (
+  <button
+    onClick={fetchQuoteDetails}
+    disabled={isLoading}
+    style={{
+      padding: '0.75rem 1.5rem',
+      background: 'linear-gradient(135deg, #2dd4bf 0%, #14b8a6 100%)',
+      border: 'none',
+      borderRadius: '10px',
+      color: '#0a0f1e',
+      fontWeight: '600',
+      cursor: 'pointer',
+      marginBottom: showDetails ? '1rem' : 0
+    }}
+  >
+    {isLoading ? 'Loading...' : showDetails ? 'Hide Quote Details' : '💰 View Quote & Pricing'}
+  </button>
+) : (
+  <p style={{color: '#fbbf24'}}>DEBUG: Status is "{quote.status}" (not showing button)</p>
+)}
 
       {/* Quote Details */}
       {showDetails && quoteDetails && quoteDetails.length > 0 && (
