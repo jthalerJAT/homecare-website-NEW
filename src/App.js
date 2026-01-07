@@ -2548,7 +2548,7 @@ function AdminDashboard({ user, token, onLogout }) {
         </div>
       )}
 
-    {/* Quotes Tab */}
+{/* Quotes Tab */}
       {!isLoading && activeTab === 'quotes' && (
         <div style={{ display: 'grid', gap: '1.5rem' }}>
           {quotes.length === 0 ? (
@@ -2557,36 +2557,272 @@ function AdminDashboard({ user, token, onLogout }) {
               border: '1px solid rgba(45, 212, 191, 0.15)',
               borderRadius: '16px',
               padding: '3rem',
-              textAlign: 'center',
-              backdropFilter: 'blur(10px)'
+              textAlign: 'center'
             }}>
-              <h3 style={{ fontSize: '1.5rem', marginBottom: '0.5rem', color: '#e8edf5' }}>
-                No Quote Requests Yet
-              </h3>
-              <p style={{ color: '#94a3b8' }}>
-                Submit a quote request to get started!
-              </p>
+              <h3 style={{ color: '#e8edf5', marginBottom: '0.5rem' }}>No Quote Requests Yet</h3>
+              <p style={{ color: '#94a3b8' }}>When customers submit quotes, they'll appear here.</p>
             </div>
           ) : (
             quotes.map(quote => (
-              <QuoteCard 
-                key={quote.id} 
-                quote={quote} 
-                token={token}
-                onUpdate={async () => {
-                  // Refresh quotes after accept/decline
-                  const result = await api.getMyQuotes(token);
-                  setQuotes(result.quoteRequests || []);
-                  // Also refresh projects
-                  const projectsResult = await api.getMyProjects(token);
-                  setProjects(projectsResult.projects || []);
+              <div
+                key={quote.id}
+                style={{
+                  background: 'rgba(26, 31, 53, 0.5)',
+                  border: '1px solid rgba(45, 212, 191, 0.15)',
+                  borderRadius: '16px',
+                  padding: '2rem',
+                  backdropFilter: 'blur(10px)'
                 }}
-              />
+              >
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'start',
+                  marginBottom: '1.5rem',
+                  flexWrap: 'wrap',
+                  gap: '1rem'
+                }}>
+                  <div>
+                    <h3 style={{
+                      fontSize: '1.4rem',
+                      marginBottom: '0.5rem',
+                      color: '#e8edf5',
+                      fontWeight: '600'
+                    }}>
+                      {quote.service_type || quote.title}
+                    </h3>
+                    <p style={{ color: '#94a3b8', fontSize: '0.9rem' }}>
+                      {new Date(quote.created_at).toLocaleDateString()} at {new Date(quote.created_at).toLocaleTimeString()}
+                    </p>
+                  </div>
+                  <div style={{
+                    padding: '0.5rem 1rem',
+                    borderRadius: '8px',
+                    background: getStatusColor(quote.status).bg,
+                    border: `1px solid ${getStatusColor(quote.status).border}`,
+                    color: getStatusColor(quote.status).text,
+                    fontSize: '0.85rem',
+                    fontWeight: '600',
+                    textTransform: 'capitalize'
+                  }}>
+                    {quote.status}
+                  </div>
+                </div>
+
+                {/* Customer Info */}
+                <div style={{
+                  background: 'rgba(10, 15, 30, 0.5)',
+                  borderRadius: '12px',
+                  padding: '1.25rem',
+                  marginBottom: '1.5rem'
+                }}>
+                  <h4 style={{ color: '#2dd4bf', marginBottom: '0.75rem', fontSize: '0.9rem', fontWeight: '600' }}>
+                    CUSTOMER INFO
+                  </h4>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.75rem' }}>
+                    <p style={{ color: '#cbd5e1' }}>
+                      <strong style={{ color: '#94a3b8' }}>Name:</strong> {quote.first_name} {quote.last_name}
+                    </p>
+                    <p style={{ color: '#cbd5e1' }}>
+                      <strong style={{ color: '#94a3b8' }}>Email:</strong> {quote.email}
+                    </p>
+                    <p style={{ color: '#cbd5e1' }}>
+                      <strong style={{ color: '#94a3b8' }}>Phone:</strong> {quote.phone || 'Not provided'}
+                    </p>
+                    <p style={{ color: '#cbd5e1' }}>
+                      <strong style={{ color: '#94a3b8' }}>Address:</strong> {quote.address || 'Not provided'}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Project Details */}
+                <div style={{
+                  background: 'rgba(10, 15, 30, 0.5)',
+                  borderRadius: '12px',
+                  padding: '1.25rem',
+                  marginBottom: '1.5rem'
+                }}>
+                  <h4 style={{ color: '#2dd4bf', marginBottom: '0.75rem', fontSize: '0.9rem', fontWeight: '600' }}>
+                    PROJECT DETAILS
+                  </h4>
+                  <p style={{ color: '#cbd5e1', marginBottom: '0.75rem' }}>
+                    <strong style={{ color: '#94a3b8' }}>Description:</strong><br />
+                    {quote.description}
+                  </p>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '0.75rem' }}>
+                    <p style={{ color: '#cbd5e1' }}>
+                      <strong style={{ color: '#94a3b8' }}>Urgency:</strong> {quote.urgency}
+                    </p>
+                    <p style={{ color: '#cbd5e1' }}>
+                      <strong style={{ color: '#94a3b8' }}>Preferred Date:</strong> {quote.preferred_start_date ? new Date(quote.preferred_start_date).toLocaleDateString() : 'Flexible'}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Actions */}
+                {quote.status === 'pending' && (
+                  <div>
+                    {selectedQuote === quote.id ? (
+                      <div style={{
+                        background: 'rgba(45, 212, 191, 0.05)',
+                        border: '1px solid rgba(45, 212, 191, 0.2)',
+                        borderRadius: '12px',
+                        padding: '1.5rem'
+                      }}>
+                        <h4 style={{ color: '#2dd4bf', marginBottom: '1rem' }}>Send Quote to Customer</h4>
+                        <div style={{ display: 'grid', gap: '1rem' }}>
+                          <div>
+                            <label style={{ display: 'block', color: '#cbd5e1', marginBottom: '0.5rem' }}>
+                              Quote Amount ($)
+                            </label>
+                            <input
+                              type="number"
+                              value={quoteResponse.amount}
+                              onChange={(e) => setQuoteResponse({...quoteResponse, amount: e.target.value})}
+                              placeholder="5000"
+                              style={{
+                                width: '100%',
+                                padding: '0.75rem',
+                                borderRadius: '8px',
+                                border: '1px solid rgba(45, 212, 191, 0.3)',
+                                background: 'rgba(15, 23, 42, 0.5)',
+                                color: '#e8edf5',
+                                fontSize: '1rem'
+                              }}
+                            />
+                          </div>
+                          <div>
+                            <label style={{ display: 'block', color: '#cbd5e1', marginBottom: '0.5rem' }}>
+                              Estimated Duration
+                            </label>
+                            <input
+                              type="text"
+                              value={quoteResponse.duration}
+                              onChange={(e) => setQuoteResponse({...quoteResponse, duration: e.target.value})}
+                              placeholder="2-3 weeks"
+                              style={{
+                                width: '100%',
+                                padding: '0.75rem',
+                                borderRadius: '8px',
+                                border: '1px solid rgba(45, 212, 191, 0.3)',
+                                background: 'rgba(15, 23, 42, 0.5)',
+                                color: '#e8edf5',
+                                fontSize: '1rem'
+                              }}
+                            />
+                          </div>
+                          <div>
+                            <label style={{ display: 'block', color: '#cbd5e1', marginBottom: '0.5rem' }}>
+                              Scope of Work
+                            </label>
+                            <textarea
+                              value={quoteResponse.scope}
+                              onChange={(e) => setQuoteResponse({...quoteResponse, scope: e.target.value})}
+                              placeholder="Detailed description of what's included..."
+                              rows={3}
+                              style={{
+                                width: '100%',
+                                padding: '0.75rem',
+                                borderRadius: '8px',
+                                border: '1px solid rgba(45, 212, 191, 0.3)',
+                                background: 'rgba(15, 23, 42, 0.5)',
+                                color: '#e8edf5',
+                                fontSize: '1rem',
+                                resize: 'vertical'
+                              }}
+                            />
+                          </div>
+                          <div style={{ display: 'flex', gap: '1rem' }}>
+                            <button
+                              onClick={() => handleSendQuote(quote.id)}
+                              style={{
+                                flex: 1,
+                                padding: '0.875rem',
+                                background: 'linear-gradient(135deg, #2dd4bf 0%, #14b8a6 100%)',
+                                border: 'none',
+                                borderRadius: '10px',
+                                color: '#0a0f1e',
+                                fontWeight: '600',
+                                cursor: 'pointer'
+                              }}
+                            >
+                              Send Quote
+                            </button>
+                            <button
+                              onClick={() => setSelectedQuote(null)}
+                              style={{
+                                padding: '0.875rem 1.5rem',
+                                background: 'transparent',
+                                border: '1px solid rgba(239, 68, 68, 0.3)',
+                                borderRadius: '10px',
+                                color: '#ef4444',
+                                fontWeight: '600',
+                                cursor: 'pointer'
+                              }}
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => setSelectedQuote(quote.id)}
+                        style={{
+                          padding: '0.875rem 2rem',
+                          background: 'linear-gradient(135deg, #2dd4bf 0%, #14b8a6 100%)',
+                          border: 'none',
+                          borderRadius: '10px',
+                          color: '#0a0f1e',
+                          fontWeight: '600',
+                          cursor: 'pointer',
+                          fontSize: '1rem'
+                        }}
+                      >
+                        Create & Send Quote
+                      </button>
+                    )}
+                  </div>
+                )}
+
+                {quote.status === 'quoted' && (
+                  <div style={{
+                    padding: '1rem',
+                    background: 'rgba(45, 212, 191, 0.1)',
+                    borderRadius: '10px',
+                    color: '#2dd4bf'
+                  }}>
+                    ✓ Quote sent - waiting for customer response
+                  </div>
+                )}
+
+                {quote.status === 'accepted' && (
+                  <div style={{
+                    padding: '1rem',
+                    background: 'rgba(34, 197, 94, 0.1)',
+                    borderRadius: '10px',
+                    color: '#22c55e'
+                  }}>
+                    ✓ Quote accepted - Project created!
+                  </div>
+                )}
+
+                {quote.status === 'declined' && (
+                  <div style={{
+                    padding: '1rem',
+                    background: 'rgba(239, 68, 68, 0.1)',
+                    borderRadius: '10px',
+                    color: '#ef4444'
+                  }}>
+                    ✗ Quote declined by customer
+                  </div>
+                )}
+              </div>
             ))
           )}
         </div>
       )}
-      
+          
       {/* Projects Tab */}
       {!isLoading && activeTab === 'projects' && (
         <div style={{
