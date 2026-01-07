@@ -1496,6 +1496,283 @@ function QuoteCard({ quote, token, onUpdate }) {
   );
 }
 
+// Customer Quote Card Component
+function CustomerQuoteCard({ quote, token, onUpdate }) {
+  const [showDetails, setShowDetails] = useState(false);
+  const [quoteDetails, setQuoteDetails] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [actionLoading, setActionLoading] = useState(false);
+
+  const fetchQuoteDetails = async () => {
+    if (quoteDetails) {
+      setShowDetails(!showDetails);
+      return;
+    }
+    
+    setIsLoading(true);
+    try {
+      const response = await fetch(`https://gpc-backend-production.up.railway.app/api/quotes/${quote.id}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await response.json();
+      setQuoteDetails(data.quotes || []);
+      setShowDetails(true);
+    } catch (error) {
+      console.error('Error fetching quote details:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleAccept = async (quoteId) => {
+    if (!window.confirm('Accept this quote and start the project?')) return;
+    
+    setActionLoading(true);
+    try {
+      const response = await fetch(`https://gpc-backend-production.up.railway.app/api/quotes/${quoteId}/accept`, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}` 
+        }
+      });
+      
+      if (response.ok) {
+        alert('Quote accepted! Project has been created.');
+        onUpdate();
+      } else {
+        const data = await response.json();
+        alert(data.error || 'Failed to accept quote');
+      }
+    } catch (error) {
+      alert('Error accepting quote');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleDecline = async (quoteId) => {
+    if (!window.confirm('Are you sure you want to decline this quote?')) return;
+    
+    setActionLoading(true);
+    try {
+      const response = await fetch(`https://gpc-backend-production.up.railway.app/api/quotes/${quoteId}/decline`, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}` 
+        }
+      });
+      
+      if (response.ok) {
+        alert('Quote declined.');
+        onUpdate();
+      } else {
+        const data = await response.json();
+        alert(data.error || 'Failed to decline quote');
+      }
+    } catch (error) {
+      alert('Error declining quote');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  return (
+    <div style={{
+      background: 'rgba(26, 31, 53, 0.5)',
+      border: '1px solid rgba(45, 212, 191, 0.15)',
+      borderRadius: '16px',
+      padding: '2rem',
+      backdropFilter: 'blur(10px)'
+    }}>
+      <div style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'start',
+        flexWrap: 'wrap',
+        gap: '1rem',
+        marginBottom: '1rem'
+      }}>
+        <div>
+          <h3 style={{
+            fontSize: '1.3rem',
+            marginBottom: '0.5rem',
+            color: '#e8edf5',
+            fontWeight: '600'
+          }}>
+            {quote.service_type || quote.title}
+          </h3>
+          <p style={{ color: '#94a3b8', fontSize: '0.9rem' }}>
+            Submitted: {new Date(quote.created_at).toLocaleDateString()}
+          </p>
+        </div>
+        <div style={{
+          padding: '0.5rem 1rem',
+          borderRadius: '8px',
+          background: quote.status === 'pending' ? 'rgba(251, 191, 36, 0.1)' : 
+                     quote.status === 'quoted' ? 'rgba(45, 212, 191, 0.1)' :
+                     quote.status === 'accepted' ? 'rgba(34, 197, 94, 0.1)' : 'rgba(168, 85, 247, 0.1)',
+          border: `1px solid ${quote.status === 'pending' ? 'rgba(251, 191, 36, 0.3)' : 
+                                quote.status === 'quoted' ? 'rgba(45, 212, 191, 0.3)' :
+                                quote.status === 'accepted' ? 'rgba(34, 197, 94, 0.3)' : 'rgba(168, 85, 247, 0.3)'}`,
+          color: quote.status === 'pending' ? '#fbbf24' : 
+                 quote.status === 'quoted' ? '#2dd4bf' :
+                 quote.status === 'accepted' ? '#22c55e' : '#a855f7',
+          fontSize: '0.85rem',
+          fontWeight: '600',
+          textTransform: 'capitalize'
+        }}>
+          {quote.status}
+        </div>
+      </div>
+
+      <p style={{ color: '#cbd5e1', fontSize: '0.95rem', marginBottom: '1rem' }}>
+        {quote.description}
+      </p>
+
+      {/* Pending - waiting for quote */}
+      {quote.status === 'pending' && (
+        <div style={{
+          padding: '1rem',
+          background: 'rgba(251, 191, 36, 0.1)',
+          borderRadius: '10px',
+          color: '#fbbf24'
+        }}>
+          ⏳ Awaiting quote from our team...
+        </div>
+      )}
+
+      {/* Quoted - show view button */}
+      {quote.status === 'quoted' && (
+        <button
+          onClick={fetchQuoteDetails}
+          disabled={isLoading}
+          style={{
+            padding: '0.875rem 1.5rem',
+            background: 'linear-gradient(135deg, #2dd4bf 0%, #14b8a6 100%)',
+            border: 'none',
+            borderRadius: '10px',
+            color: '#0a0f1e',
+            fontWeight: '600',
+            cursor: 'pointer',
+            fontSize: '1rem'
+          }}
+        >
+          {isLoading ? 'Loading...' : '💰 View Quote & Pricing'}
+        </button>
+      )}
+
+      {/* Quote Details */}
+      {showDetails && quoteDetails && quoteDetails.length > 0 && (
+        <div style={{
+          background: 'rgba(45, 212, 191, 0.05)',
+          border: '1px solid rgba(45, 212, 191, 0.2)',
+          borderRadius: '12px',
+          padding: '1.5rem',
+          marginTop: '1rem'
+        }}>
+          {quoteDetails.map(q => (
+            <div key={q.id}>
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: '1rem',
+                flexWrap: 'wrap',
+                gap: '1rem'
+              }}>
+                <h4 style={{ color: '#2dd4bf', fontSize: '1.1rem' }}>Your Quote</h4>
+                <div style={{
+                  fontSize: '2rem',
+                  fontWeight: '700',
+                  color: '#2dd4bf'
+                }}>
+                  ${parseFloat(q.amount).toLocaleString()}
+                </div>
+              </div>
+
+              {q.scope_of_work && (
+                <div style={{ marginBottom: '1rem' }}>
+                  <p style={{ color: '#94a3b8', fontSize: '0.85rem', marginBottom: '0.25rem' }}>Scope of Work:</p>
+                  <p style={{ color: '#e8edf5' }}>{q.scope_of_work}</p>
+                </div>
+              )}
+
+              {q.estimated_duration && (
+                <div style={{ marginBottom: '1rem' }}>
+                  <p style={{ color: '#94a3b8', fontSize: '0.85rem', marginBottom: '0.25rem' }}>Estimated Duration:</p>
+                  <p style={{ color: '#e8edf5' }}>{q.estimated_duration}</p>
+                </div>
+              )}
+
+              {q.payment_terms && (
+                <div style={{ marginBottom: '1.5rem' }}>
+                  <p style={{ color: '#94a3b8', fontSize: '0.85rem', marginBottom: '0.25rem' }}>Payment Terms:</p>
+                  <p style={{ color: '#e8edf5' }}>{q.payment_terms}</p>
+                </div>
+              )}
+
+              {q.status === 'quoted' && (
+                <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+                  <button
+                    onClick={() => handleAccept(q.id)}
+                    disabled={actionLoading}
+                    style={{
+                      flex: 1,
+                      minWidth: '150px',
+                      padding: '1rem',
+                      background: 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)',
+                      border: 'none',
+                      borderRadius: '10px',
+                      color: '#fff',
+                      fontWeight: '600',
+                      cursor: actionLoading ? 'wait' : 'pointer',
+                      fontSize: '1rem'
+                    }}
+                  >
+                    {actionLoading ? 'Processing...' : '✓ Accept Quote'}
+                  </button>
+                  <button
+                    onClick={() => handleDecline(q.id)}
+                    disabled={actionLoading}
+                    style={{
+                      flex: 1,
+                      minWidth: '150px',
+                      padding: '1rem',
+                      background: 'transparent',
+                      border: '1px solid rgba(239, 68, 68, 0.3)',
+                      borderRadius: '10px',
+                      color: '#ef4444',
+                      fontWeight: '600',
+                      cursor: actionLoading ? 'wait' : 'pointer',
+                      fontSize: '1rem'
+                    }}
+                  >
+                    ✗ Decline
+                  </button>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Accepted */}
+      {quote.status === 'accepted' && (
+        <div style={{
+          padding: '1rem',
+          background: 'rgba(34, 197, 94, 0.1)',
+          borderRadius: '10px',
+          color: '#22c55e'
+        }}>
+          ✓ Quote accepted - Check Projects tab for updates!
+        </div>
+      )}
+    </div>
+  );
+}
+
 // Input Field Component
 function InputField({ label, type, required, value, onChange, ...props }) {
   return (
@@ -2980,7 +3257,7 @@ function CustomerPortal({ user, token, onLogout }) {
         </div>
       )}
 
-      {/* Quotes Tab */}
+    {/* Quotes Tab */}
       {!isLoading && activeTab === 'quotes' && (
         <div style={{ display: 'grid', gap: '1.5rem' }}>
           {quotes.length === 0 ? (
@@ -3001,64 +3278,22 @@ function CustomerPortal({ user, token, onLogout }) {
             </div>
           ) : (
             quotes.map(quote => (
-              <div
-                key={quote.id}
-                style={{
-                  background: 'rgba(26, 31, 53, 0.5)',
-                  border: '1px solid rgba(45, 212, 191, 0.15)',
-                  borderRadius: '16px',
-                  padding: '2rem',
-                  backdropFilter: 'blur(10px)'
+              <CustomerQuoteCard 
+                key={quote.id} 
+                quote={quote} 
+                token={token}
+                onUpdate={async () => {
+                  const result = await api.getMyQuotes(token);
+                  setQuotes(result.quoteRequests || []);
+                  const projectsResult = await api.getMyProjects(token);
+                  setProjects(projectsResult.projects || []);
                 }}
-              >
-                <div style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'start',
-                  flexWrap: 'wrap',
-                  gap: '1rem'
-                }}>
-                  <div>
-                    <h3 style={{
-                      fontSize: '1.3rem',
-                      marginBottom: '0.5rem',
-                      color: '#e8edf5',
-                      fontWeight: '600'
-                    }}>
-                      {quote.service_type || quote.title}
-                    </h3>
-                    <p style={{ color: '#94a3b8', fontSize: '0.9rem', marginBottom: '0.5rem' }}>
-                      Submitted: {new Date(quote.created_at).toLocaleDateString()}
-                    </p>
-                    <p style={{ color: '#cbd5e1', fontSize: '0.95rem' }}>
-                      {quote.description}
-                    </p>
-                  </div>
-                  <div style={{
-                    padding: '0.5rem 1rem',
-                    borderRadius: '8px',
-                    background: quote.status === 'pending' ? 'rgba(251, 191, 36, 0.1)' : 
-                               quote.status === 'quoted' ? 'rgba(45, 212, 191, 0.1)' :
-                               quote.status === 'accepted' ? 'rgba(34, 197, 94, 0.1)' : 'rgba(168, 85, 247, 0.1)',
-                    border: `1px solid ${quote.status === 'pending' ? 'rgba(251, 191, 36, 0.3)' : 
-                                          quote.status === 'quoted' ? 'rgba(45, 212, 191, 0.3)' :
-                                          quote.status === 'accepted' ? 'rgba(34, 197, 94, 0.3)' : 'rgba(168, 85, 247, 0.3)'}`,
-                    color: quote.status === 'pending' ? '#fbbf24' : 
-                           quote.status === 'quoted' ? '#2dd4bf' :
-                           quote.status === 'accepted' ? '#22c55e' : '#a855f7',
-                    fontSize: '0.85rem',
-                    fontWeight: '600',
-                    textTransform: 'capitalize'
-                  }}>
-                    {quote.status}
-                  </div>
-                </div>
-              </div>
+              />
             ))
           )}
         </div>
       )}
-
+      
       {/* Projects Tab */}
       {!isLoading && activeTab === 'projects' && (
         <div style={{ display: 'grid', gap: '1.5rem' }}>
