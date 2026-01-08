@@ -2636,8 +2636,11 @@ function AdminDashboard({ user, token, onLogout }) {
     }
   }, [token]);
 
-  const handleSendQuote = async (quoteRequestId) => {
+ const handleSendQuote = async (quoteRequestId) => {
     try {
+      // Find the quote request to get customer info
+      const currentQuote = quotes.find(q => q.id === quoteRequestId);
+      
       const response = await fetch(`https://gpc-backend-production.up.railway.app/api/admin/quotes/${quoteRequestId}/create-quote`, {
         method: 'POST',
         headers: {
@@ -2653,6 +2656,26 @@ function AdminDashboard({ user, token, onLogout }) {
       });
 
       if (response.ok) {
+        // Send email notification to customer
+        if (currentQuote && currentQuote.email && window.emailjs) {
+          try {
+            await window.emailjs.send(
+              'service_nwt18xw',
+              'template_djw315q',
+              {
+                to_email: currentQuote.email,
+                to_name: currentQuote.first_name || 'Valued Customer',
+                service_type: currentQuote.service_type || 'Home Improvement',
+                quote_amount: quoteResponse.amount,
+                duration: quoteResponse.duration || 'To be discussed'
+              }
+            );
+            console.log('Quote notification email sent!');
+          } catch (emailError) {
+            console.error('Email send failed:', emailError);
+          }
+        }
+        
         alert('Quote sent successfully!');
         setSelectedQuote(null);
         setQuoteResponse({ amount: '', scope: '', duration: '' });
@@ -2670,7 +2693,7 @@ function AdminDashboard({ user, token, onLogout }) {
       alert('Error sending quote');
     }
   };
-
+  
   const getStatusColor = (status) => {
     switch(status) {
       case 'pending': return { bg: 'rgba(251, 191, 36, 0.1)', border: 'rgba(251, 191, 36, 0.3)', text: '#fbbf24' };
