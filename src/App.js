@@ -1996,6 +1996,155 @@ function MessageChat({ type, id, token, currentUser }) {
   );
 }
 
+// Admin Messages Component
+function AdminMessages({ token }) {
+  const [conversations, setConversations] = useState([]);
+  const [selectedConversation, setSelectedConversation] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchConversations = async () => {
+      try {
+        const response = await fetch('https://gpc-backend-production.up.railway.app/api/admin/conversations', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await response.json();
+        setConversations(data.conversations || []);
+      } catch (error) {
+        console.error('Error fetching conversations:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchConversations();
+  }, [token]);
+
+  if (isLoading) {
+    return <div style={{ textAlign: 'center', padding: '2rem', color: '#94a3b8' }}>Loading conversations...</div>;
+  }
+
+  // Filter to only show conversations that have messages or recent activity
+  const activeConversations = conversations.filter(c => c.last_message || c.unread_count > 0);
+
+  if (selectedConversation) {
+    return (
+      <div style={{
+        background: 'rgba(26, 31, 53, 0.5)',
+        border: '1px solid rgba(45, 212, 191, 0.15)',
+        borderRadius: '16px',
+        padding: '1.5rem'
+      }}>
+        <button
+          onClick={() => setSelectedConversation(null)}
+          style={{
+            padding: '0.5rem 1rem',
+            background: 'rgba(148, 163, 184, 0.1)',
+            border: '1px solid rgba(148, 163, 184, 0.3)',
+            borderRadius: '8px',
+            color: '#94a3b8',
+            cursor: 'pointer',
+            marginBottom: '1rem'
+          }}
+        >
+          ← Back to Conversations
+        </button>
+        
+        <div style={{ marginBottom: '1rem' }}>
+          <h3 style={{ color: '#e8edf5', marginBottom: '0.25rem' }}>
+            {selectedConversation.first_name} {selectedConversation.last_name}
+          </h3>
+          <p style={{ color: '#94a3b8', fontSize: '0.9rem' }}>
+            {selectedConversation.service_type} • {selectedConversation.type === 'quote' ? 'Quote Request' : 'Project'}
+          </p>
+        </div>
+
+        <MessageChat
+          type={selectedConversation.type}
+          id={selectedConversation.id}
+          token={token}
+          currentUser={{ user_type: 'admin' }}
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ display: 'grid', gap: '1rem' }}>
+      {activeConversations.length === 0 ? (
+        <div style={{
+          background: 'rgba(26, 31, 53, 0.5)',
+          border: '1px solid rgba(45, 212, 191, 0.15)',
+          borderRadius: '16px',
+          padding: '3rem',
+          textAlign: 'center'
+        }}>
+          <h3 style={{ color: '#e8edf5', marginBottom: '0.5rem' }}>No Messages Yet</h3>
+          <p style={{ color: '#94a3b8' }}>
+            When customers send messages, they'll appear here.
+          </p>
+        </div>
+      ) : (
+        activeConversations.map((conv, index) => (
+          <div
+            key={`${conv.type}-${conv.id}-${index}`}
+            onClick={() => setSelectedConversation(conv)}
+            style={{
+              background: 'rgba(26, 31, 53, 0.5)',
+              border: conv.unread_count > 0 
+                ? '1px solid rgba(45, 212, 191, 0.5)' 
+                : '1px solid rgba(45, 212, 191, 0.15)',
+              borderRadius: '16px',
+              padding: '1.25rem',
+              cursor: 'pointer',
+              transition: 'all 0.2s ease'
+            }}
+          >
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'start',
+              marginBottom: '0.5rem'
+            }}>
+              <div>
+                <h4 style={{ color: '#e8edf5', marginBottom: '0.25rem' }}>
+                  {conv.first_name} {conv.last_name}
+                </h4>
+                <p style={{ color: '#2dd4bf', fontSize: '0.85rem' }}>
+                  {conv.service_type} • {conv.type === 'quote' ? 'Quote' : 'Project'}
+                </p>
+              </div>
+              {conv.unread_count > 0 && (
+                <span style={{
+                  background: '#2dd4bf',
+                  color: '#0a0f1e',
+                  padding: '0.25rem 0.75rem',
+                  borderRadius: '999px',
+                  fontSize: '0.8rem',
+                  fontWeight: '600'
+                }}>
+                  {conv.unread_count} new
+                </span>
+              )}
+            </div>
+            {conv.last_message && (
+              <p style={{ 
+                color: '#94a3b8', 
+                fontSize: '0.9rem',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap'
+              }}>
+                {conv.last_message}
+              </p>
+            )}
+          </div>
+        ))
+      )}
+    </div>
+  );
+}
+
 // Input Field Component
 function InputField({ label, type, required, value, onChange, ...props }) {
   return (
@@ -3046,7 +3195,7 @@ function AdminDashboard({ user, token, onLogout }) {
         borderBottom: '1px solid rgba(45, 212, 191, 0.15)',
         flexWrap: 'wrap'
       }}>
-        {['quotes', 'projects', 'customers'].map(tab => (
+        {['quotes', 'projects', 'messages', 'customers'].map(tab => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
@@ -3363,6 +3512,11 @@ function AdminDashboard({ user, token, onLogout }) {
             When customers accept quotes, projects will be created and managed here.
           </p>
         </div>
+      )}
+
+      {/* Messages Tab */}
+      {!isLoading && activeTab === 'messages' && (
+        <AdminMessages token={token} />
       )}
 
       {/* Customers Tab */}
