@@ -1499,6 +1499,7 @@ function QuoteCard({ quote, token, onUpdate }) {
 // Customer Quote Card Component
 function CustomerQuoteCard({ quote, token, onUpdate }) {
   const [showDetails, setShowDetails] = useState(false);
+  const [showChat, setShowChat] = useState(false);
   const [quoteDetails, setQuoteDetails] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
@@ -1758,6 +1759,34 @@ function CustomerQuoteCard({ quote, token, onUpdate }) {
         </div>
       )}
 
+      {/* Message Button & Chat */}
+      <div style={{ marginTop: '1rem' }}>
+        <button
+          onClick={() => setShowChat(!showChat)}
+          style={{
+            padding: '0.75rem 1.25rem',
+            background: 'rgba(168, 85, 247, 0.1)',
+            border: '1px solid rgba(168, 85, 247, 0.3)',
+            borderRadius: '10px',
+            color: '#a855f7',
+            fontWeight: '600',
+            cursor: 'pointer',
+            fontSize: '0.95rem'
+          }}
+        >
+          {showChat ? '✕ Close Chat' : '💬 Message Us'}
+        </button>
+        
+        {showChat && (
+          <MessageChat 
+            type="quote"
+            id={quote.id}
+            token={token}
+            currentUser={null}
+          />
+        )}
+      </div>
+
       {/* Accepted */}
       {quote.status === 'accepted' && (
         <div style={{
@@ -1769,6 +1798,200 @@ function CustomerQuoteCard({ quote, token, onUpdate }) {
           ✓ Quote accepted - Check Projects tab for updates!
         </div>
       )}
+    </div>
+  );
+}
+
+// Message Chat Component
+function MessageChat({ type, id, token, currentUser }) {
+  const [messages, setMessages] = useState([]);
+  const [newMessage, setNewMessage] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSending, setIsSending] = useState(false);
+
+  // Fetch messages
+  useEffect(() => {
+    const fetchMessages = async () => {
+      try {
+        const response = await fetch(`https://gpc-backend-production.up.railway.app/api/messages/${type}/${id}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await response.json();
+        setMessages(data.messages || []);
+      } catch (error) {
+        console.error('Error fetching messages:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    if (token && id) {
+      fetchMessages();
+    }
+  }, [token, id, type]);
+
+  const handleSend = async () => {
+    if (!newMessage.trim()) return;
+
+    setIsSending(true);
+    try {
+      const body = type === 'quote' 
+        ? { quoteRequestId: id, message: newMessage }
+        : { projectId: id, message: newMessage };
+
+      const response = await fetch('https://gpc-backend-production.up.railway.app/api/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(body)
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setMessages([...messages, data.message]);
+        setNewMessage('');
+      }
+    } catch (error) {
+      console.error('Error sending message:', error);
+    } finally {
+      setIsSending(false);
+    }
+  };
+
+  const formatTime = (timestamp) => {
+    const date = new Date(timestamp);
+    return date.toLocaleString('en-US', { 
+      month: 'short', 
+      day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true
+    });
+  };
+
+  return (
+    <div style={{
+      background: 'rgba(10, 15, 30, 0.5)',
+      borderRadius: '12px',
+      padding: '1rem',
+      marginTop: '1rem'
+    }}>
+      <h4 style={{ color: '#2dd4bf', marginBottom: '1rem', fontSize: '1rem' }}>
+        💬 Messages
+      </h4>
+
+      {/* Messages List */}
+      <div style={{
+        maxHeight: '300px',
+        overflowY: 'auto',
+        marginBottom: '1rem',
+        padding: '0.5rem'
+      }}>
+        {isLoading ? (
+          <p style={{ color: '#94a3b8', textAlign: 'center' }}>Loading messages...</p>
+        ) : messages.length === 0 ? (
+          <p style={{ color: '#94a3b8', textAlign: 'center', fontStyle: 'italic' }}>
+            No messages yet. Start the conversation!
+          </p>
+        ) : (
+          messages.map((msg, index) => {
+            const isFromAdmin = msg.sender_type === 'admin';
+            const isFromMe = msg.sender_id === currentUser?.id;
+            
+            return (
+              <div
+                key={msg.id || index}
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: isFromMe ? 'flex-end' : 'flex-start',
+                  marginBottom: '0.75rem'
+                }}
+              >
+                <div style={{
+                  maxWidth: '80%',
+                  padding: '0.75rem 1rem',
+                  borderRadius: '12px',
+                  background: isFromMe 
+                    ? 'linear-gradient(135deg, #2dd4bf 0%, #14b8a6 100%)'
+                    : 'rgba(45, 212, 191, 0.1)',
+                  color: isFromMe ? '#0a0f1e' : '#e8edf5'
+                }}>
+                  <p style={{ 
+                    fontSize: '0.8rem', 
+                    fontWeight: '600',
+                    marginBottom: '0.25rem',
+                    color: isFromMe ? '#0a0f1e' : '#2dd4bf'
+                  }}>
+                    {isFromMe ? 'You' : isFromAdmin ? 'GPC Rep' : `${msg.first_name || 'Customer'}`}
+                  </p>
+                  <p style={{ margin: 0, fontSize: '0.95rem' }}>{msg.message}</p>
+                  {msg.attachments && JSON.parse(msg.attachments || '[]').length > 0 && (
+                    <div style={{ marginTop: '0.5rem' }}>
+                      {JSON.parse(msg.attachments).map((url, i) => (
+                        <img 
+                          key={i} 
+                          src={url} 
+                          alt="attachment" 
+                          style={{ 
+                            maxWidth: '200px', 
+                            borderRadius: '8px',
+                            marginTop: '0.5rem'
+                          }} 
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <span style={{ 
+                  fontSize: '0.7rem', 
+                  color: '#64748b',
+                  marginTop: '0.25rem'
+                }}>
+                  {formatTime(msg.created_at)}
+                </span>
+              </div>
+            );
+          })
+        )}
+      </div>
+
+      {/* Input Area */}
+      <div style={{ display: 'flex', gap: '0.5rem' }}>
+        <input
+          type="text"
+          value={newMessage}
+          onChange={(e) => setNewMessage(e.target.value)}
+          onKeyPress={(e) => e.key === 'Enter' && handleSend()}
+          placeholder="Type a message..."
+          style={{
+            flex: 1,
+            padding: '0.75rem 1rem',
+            borderRadius: '10px',
+            border: '1px solid rgba(45, 212, 191, 0.3)',
+            background: 'rgba(15, 23, 42, 0.5)',
+            color: '#e8edf5',
+            fontSize: '0.95rem'
+          }}
+        />
+        <button
+          onClick={handleSend}
+          disabled={isSending || !newMessage.trim()}
+          style={{
+            padding: '0.75rem 1.25rem',
+            background: isSending ? 'rgba(45, 212, 191, 0.5)' : 'linear-gradient(135deg, #2dd4bf 0%, #14b8a6 100%)',
+            border: 'none',
+            borderRadius: '10px',
+            color: '#0a0f1e',
+            fontWeight: '600',
+            cursor: isSending ? 'wait' : 'pointer'
+          }}
+        >
+          {isSending ? '...' : 'Send'}
+        </button>
+      </div>
     </div>
   );
 }
