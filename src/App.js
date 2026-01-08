@@ -1898,7 +1898,7 @@ function MessageChat({ type, id, token, currentUser }) {
         ) : (
           messages.map((msg, index) => {
             const isFromAdmin = msg.sender_type === 'admin';
-            const isFromMe = msg.sender_id === currentUser?.id;
+            const isGPCRep = isFromAdmin;
             
             return (
               <div
@@ -1906,7 +1906,7 @@ function MessageChat({ type, id, token, currentUser }) {
                 style={{
                   display: 'flex',
                   flexDirection: 'column',
-                  alignItems: isFromMe ? 'flex-end' : 'flex-start',
+                  alignItems: isGPCRep ? 'flex-end' : 'flex-start',
                   marginBottom: '0.75rem'
                 }}
               >
@@ -1914,18 +1914,18 @@ function MessageChat({ type, id, token, currentUser }) {
                   maxWidth: '80%',
                   padding: '0.75rem 1rem',
                   borderRadius: '12px',
-                  background: isFromMe 
+                  background: isGPCRep 
                     ? 'linear-gradient(135deg, #2dd4bf 0%, #14b8a6 100%)'
                     : 'rgba(45, 212, 191, 0.1)',
-                  color: isFromMe ? '#0a0f1e' : '#e8edf5'
+                    color: isGPCRep ? '#0a0f1e' : '#e8edf5'
                 }}>
                   <p style={{ 
                     fontSize: '0.8rem', 
                     fontWeight: '600',
                     marginBottom: '0.25rem',
-                    color: isFromMe ? '#0a0f1e' : '#2dd4bf'
+                    color: isGPCRep ? '#0a0f1e' : '#2dd4bf'
                   }}>
-                    {isFromMe ? 'You' : isFromAdmin ? 'GPC Rep' : `${msg.first_name || 'Customer'}`}
+                    {isGPCRep ? 'GPC Rep' : `${msg.first_name || 'Customer'}`}
                   </p>
                   <p style={{ margin: 0, fontSize: '0.95rem' }}>{msg.message}</p>
                   {msg.attachments && JSON.parse(msg.attachments || '[]').length > 0 && (
