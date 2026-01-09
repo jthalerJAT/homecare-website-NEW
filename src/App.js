@@ -1839,17 +1839,25 @@ function MessageChat({ type, id, token, currentUser }) {
 
     setIsSending(true);
     try {
+      // Build body with attachments - try as JSON string first (as backend stores it)
       const body = type === 'quote' 
         ? { 
             quoteRequestId: id, 
-            message: newMessage,
-            attachments: attachments.length > 0 ? JSON.stringify(attachments) : undefined
+            message: newMessage || ''
           }
         : { 
             projectId: id, 
-            message: newMessage,
-            attachments: attachments.length > 0 ? JSON.stringify(attachments) : undefined
+            message: newMessage || ''
           };
+
+      // Add attachments if present - send as JSON string to match backend storage format
+      if (attachments.length > 0) {
+        body.attachments = JSON.stringify(attachments);
+      }
+
+      console.log('Sending message with body:', body);
+      console.log('Attachments array:', attachments);
+      console.log('Attachments as JSON string:', body.attachments);
 
       const response = await fetch('https://gpc-backend-production.up.railway.app/api/messages', {
         method: 'POST',
@@ -1860,15 +1868,23 @@ function MessageChat({ type, id, token, currentUser }) {
         body: JSON.stringify(body)
       });
 
+      const responseData = await response.json();
+      console.log('Response status:', response.status);
+      console.log('Response data:', responseData);
+
       if (response.ok) {
-        const data = await response.json();
-        setMessages([...messages, data.message]);
+        console.log('Message sent successfully:', responseData);
+        setMessages([...messages, responseData.message]);
         setNewMessage('');
         setAttachments([]);
         setImagePreviews([]);
+      } else {
+        console.error('Failed to send message:', response.status, responseData);
+        alert(`Failed to send message: ${responseData.message || responseData.error || 'Unknown error'}. Please try again.`);
       }
     } catch (error) {
       console.error('Error sending message:', error);
+      alert(`Error sending message: ${error.message}. Please try again.`);
     } finally {
       setIsSending(false);
     }
@@ -1918,6 +1934,7 @@ function MessageChat({ type, id, token, currentUser }) {
     try {
       // Convert to base64
       const base64 = await convertToBase64(file);
+      console.log('Image converted to base64, length:', base64.length);
       
       // Upload to backend
       const response = await fetch('https://gpc-backend-production.up.railway.app/api/upload-photo', {
@@ -1930,21 +1947,33 @@ function MessageChat({ type, id, token, currentUser }) {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to upload image');
+        const errorData = await response.json().catch(() => ({}));
+        console.error('Upload failed:', response.status, errorData);
+        throw new Error(`Failed to upload image: ${response.status}`);
       }
 
       const data = await response.json();
-      const photoUrl = data.url || data.photoUrl || data.photo_url;
+      console.log('Upload response:', data);
+      
+      const photoUrl = data.url || data.photoUrl || data.photo_url || data.imageUrl || data.image_url;
 
       if (photoUrl) {
+        console.log('Photo URL received:', photoUrl);
         // Add to attachments
-        setAttachments([...attachments, photoUrl]);
+        setAttachments(prev => {
+          const updated = [...prev, photoUrl];
+          console.log('Updated attachments:', updated);
+          return updated;
+        });
         // Add preview
-        setImagePreviews([...imagePreviews, { url: photoUrl, preview: base64 }]);
+        setImagePreviews(prev => [...prev, { url: photoUrl, preview: base64 }]);
+      } else {
+        console.error('No photo URL in response:', data);
+        alert('Upload succeeded but no URL returned. Please try again.');
       }
     } catch (error) {
       console.error('Error uploading image:', error);
-      alert('Failed to upload image. Please try again.');
+      alert(`Failed to upload image: ${error.message}. Please try again.`);
     } finally {
       setIsUploading(false);
       // Reset file input
