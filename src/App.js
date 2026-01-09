@@ -1812,6 +1812,8 @@ function MessageChat({ type, id, token, currentUser }) {
   const [imagePreviews, setImagePreviews] = useState([]);
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef(null);
+  const messagesEndRef = useRef(null);
+  const messagesContainerRef = useRef(null);
 
   // Fetch messages
   useEffect(() => {
@@ -1833,6 +1835,13 @@ function MessageChat({ type, id, token, currentUser }) {
       fetchMessages();
     }
   }, [token, id, type]);
+
+  // Auto-scroll to bottom when messages load or new message is sent
+  useEffect(() => {
+    if (!isLoading && messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [messages, isLoading]);
 
   const handleSend = async () => {
     if (!newMessage.trim() && attachments.length === 0) return;
@@ -1999,12 +2008,15 @@ function MessageChat({ type, id, token, currentUser }) {
       </h4>
 
       {/* Messages List */}
-      <div style={{
-        maxHeight: '300px',
-        overflowY: 'auto',
-        marginBottom: '1rem',
-        padding: '0.5rem'
-      }}>
+      <div 
+        ref={messagesContainerRef}
+        style={{
+          maxHeight: '300px',
+          overflowY: 'auto',
+          marginBottom: '1rem',
+          padding: '0.5rem'
+        }}
+      >
         {isLoading ? (
           <p style={{ color: '#94a3b8', textAlign: 'center' }}>Loading messages...</p>
         ) : messages.length === 0 ? (
@@ -2012,93 +2024,96 @@ function MessageChat({ type, id, token, currentUser }) {
             No messages yet. Start the conversation!
           </p>
         ) : (
-          messages.map((msg, index) => {
-            const isFromAdmin = msg.sender_type === 'admin';
-            const isGPCRep = isFromAdmin;
-            
-            return (
-              <div
-                key={msg.id || index}
-                style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: isGPCRep ? 'flex-end' : 'flex-start',
-                  marginBottom: '0.75rem'
-                }}
-              >
-                <div style={{
-                  maxWidth: '80%',
-                  padding: '0.75rem 1rem',
-                  borderRadius: '12px',
-                  background: isGPCRep 
-                    ? 'linear-gradient(135deg, #2dd4bf 0%, #14b8a6 100%)'
-                    : 'rgba(45, 212, 191, 0.1)',
+          <>
+            {messages.map((msg, index) => {
+              const isFromAdmin = msg.sender_type === 'admin';
+              const isGPCRep = isFromAdmin;
+              
+              return (
+                <div
+                  key={msg.id || index}
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: isGPCRep ? 'flex-end' : 'flex-start',
+                    marginBottom: '0.75rem'
+                  }}
+                >
+                  <div style={{
+                    maxWidth: '80%',
+                    padding: '0.75rem 1rem',
+                    borderRadius: '12px',
+                    background: isGPCRep 
+                      ? 'linear-gradient(135deg, #2dd4bf 0%, #14b8a6 100%)'
+                      : 'rgba(45, 212, 191, 0.1)',
                     color: isGPCRep ? '#0a0f1e' : '#e8edf5'
-                }}>
-                  <p style={{ 
-                    fontSize: '0.8rem', 
-                    fontWeight: '600',
-                    marginBottom: '0.25rem',
-                    color: isGPCRep ? '#0a0f1e' : '#2dd4bf'
                   }}>
-                    {isGPCRep ? 'GPC Rep' : `${msg.first_name || 'Customer'}`}
-                  </p>
-                  <p style={{ margin: 0, fontSize: '0.95rem' }}>{msg.message}</p>
-                  {(() => {
-                    const parsedAttachments = typeof msg.attachments === 'string' 
-                      ? JSON.parse(msg.attachments || '[]') 
-                      : (msg.attachments || []);
-                    return parsedAttachments.length > 0 && (
-                      <div style={{ marginTop: '0.5rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                        {parsedAttachments.map((attachment, i) => {
-                          // Extract URL - handle both string and object formats
-                          const urlString = typeof attachment === 'string' 
-                            ? attachment 
-                            : (attachment.url || attachment.photoUrl || attachment.photo_url || attachment.imageUrl || attachment.image_url || '');
-                          
-                          // Ensure full URL - if it's not already a full URL, prepend backend URL
-                          const fullUrl = urlString.startsWith('http://') || urlString.startsWith('https://')
-                            ? urlString
-                            : `https://gpc-backend-production.up.railway.app${urlString.startsWith('/') ? '' : '/'}${urlString}`;
-                          
-                          return (
-                            <img 
-                              key={i} 
-                              src={fullUrl} 
-                              alt="Attachment" 
-                              style={{ 
-                                maxWidth: '200px', 
-                                maxHeight: '200px',
-                                width: 'auto',
-                                height: 'auto',
-                                borderRadius: '8px',
-                                marginTop: '0.5rem',
-                                objectFit: 'cover',
-                                border: '1px solid rgba(45, 212, 191, 0.3)',
-                                cursor: 'pointer'
-                              }}
-                              onError={(e) => {
-                                console.error('Failed to load image:', fullUrl);
-                                e.target.style.display = 'none';
-                              }}
-                              onClick={() => window.open(fullUrl, '_blank')}
-                            />
-                          );
-                        })}
-                      </div>
-                    );
-                  })()}
+                    <p style={{ 
+                      fontSize: '0.8rem', 
+                      fontWeight: '600',
+                      marginBottom: '0.25rem',
+                      color: isGPCRep ? '#0a0f1e' : '#2dd4bf'
+                    }}>
+                      {isGPCRep ? 'GPC Rep' : `${msg.first_name || 'Customer'}`}
+                    </p>
+                    <p style={{ margin: 0, fontSize: '0.95rem' }}>{msg.message}</p>
+                    {(() => {
+                      const parsedAttachments = typeof msg.attachments === 'string' 
+                        ? JSON.parse(msg.attachments || '[]') 
+                        : (msg.attachments || []);
+                      return parsedAttachments.length > 0 && (
+                        <div style={{ marginTop: '0.5rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                          {parsedAttachments.map((attachment, i) => {
+                            // Extract URL - handle both string and object formats
+                            const urlString = typeof attachment === 'string' 
+                              ? attachment 
+                              : (attachment.url || attachment.photoUrl || attachment.photo_url || attachment.imageUrl || attachment.image_url || '');
+                            
+                            // Ensure full URL - if it's not already a full URL, prepend backend URL
+                            const fullUrl = urlString.startsWith('http://') || urlString.startsWith('https://')
+                              ? urlString
+                              : `https://gpc-backend-production.up.railway.app${urlString.startsWith('/') ? '' : '/'}${urlString}`;
+                            
+                            return (
+                              <img 
+                                key={i} 
+                                src={fullUrl} 
+                                alt="Attachment" 
+                                style={{ 
+                                  maxWidth: '200px', 
+                                  maxHeight: '200px',
+                                  width: 'auto',
+                                  height: 'auto',
+                                  borderRadius: '8px',
+                                  marginTop: '0.5rem',
+                                  objectFit: 'cover',
+                                  border: '1px solid rgba(45, 212, 191, 0.3)',
+                                  cursor: 'pointer'
+                                }}
+                                onError={(e) => {
+                                  console.error('Failed to load image:', fullUrl);
+                                  e.target.style.display = 'none';
+                                }}
+                                onClick={() => window.open(fullUrl, '_blank')}
+                              />
+                            );
+                          })}
+                        </div>
+                      );
+                    })()}
+                  </div>
+                  <span style={{ 
+                    fontSize: '0.7rem', 
+                    color: '#64748b',
+                    marginTop: '0.25rem'
+                  }}>
+                    {formatTime(msg.created_at)}
+                  </span>
                 </div>
-                <span style={{ 
-                  fontSize: '0.7rem', 
-                  color: '#64748b',
-                  marginTop: '0.25rem'
-                }}>
-                  {formatTime(msg.created_at)}
-                </span>
-              </div>
-            );
-          })
+              );
+            })}
+            <div ref={messagesEndRef} />
+          </>
         )}
       </div>
 
@@ -3778,6 +3793,356 @@ function AdminDashboard({ user, token, onLogout }) {
 }
 
 // Customer Portal
+// Customer Projects Tab Component
+function CustomerProjectsTab({ projects, token }) {
+  const [expandedProjects, setExpandedProjects] = useState({});
+
+  const toggleProject = (projectId) => {
+    setExpandedProjects(prev => ({
+      ...prev,
+      [projectId]: !prev[projectId]
+    }));
+  };
+
+  if (projects.length === 0) {
+    return (
+      <div style={{
+        background: 'rgba(26, 31, 53, 0.5)',
+        border: '1px solid rgba(45, 212, 191, 0.15)',
+        borderRadius: '16px',
+        padding: '3rem',
+        textAlign: 'center',
+        backdropFilter: 'blur(10px)'
+      }}>
+        <h3 style={{ fontSize: '1.5rem', marginBottom: '0.5rem', color: '#e8edf5' }}>
+          No Active Projects
+        </h3>
+        <p style={{ color: '#94a3b8' }}>
+          Once a quote is accepted, your project will appear here.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ display: 'grid', gap: '1.5rem' }}>
+      {projects.map(project => {
+        const isExpanded = expandedProjects[project.id];
+        
+        return (
+          <div
+            key={project.id}
+            style={{
+              background: 'rgba(26, 31, 53, 0.5)',
+              border: '1px solid rgba(45, 212, 191, 0.15)',
+              borderRadius: '16px',
+              padding: '2rem',
+              backdropFilter: 'blur(10px)'
+            }}
+          >
+            <div
+              onClick={() => toggleProject(project.id)}
+              style={{
+                cursor: 'pointer',
+                marginBottom: isExpanded ? '1.5rem' : '0'
+              }}
+            >
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'start',
+                flexWrap: 'wrap',
+                gap: '1rem'
+              }}>
+                <div style={{ flex: 1 }}>
+                  <h3 style={{
+                    fontSize: '1.5rem',
+                    marginBottom: '0.5rem',
+                    color: '#e8edf5',
+                    fontWeight: '600'
+                  }}>
+                    {project.title}
+                  </h3>
+                  {project.start_date && (
+                    <p style={{ color: '#94a3b8', marginBottom: '0.5rem' }}>
+                      Started: {new Date(project.start_date).toLocaleDateString()}
+                    </p>
+                  )}
+                  {project.estimated_completion_date && (
+                    <p style={{ color: '#94a3b8' }}>
+                      Estimated Completion: {new Date(project.estimated_completion_date).toLocaleDateString()}
+                    </p>
+                  )}
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                  <div style={{
+                    padding: '0.5rem 1rem',
+                    borderRadius: '8px',
+                    background: project.status === 'in_progress' ? 'rgba(45, 212, 191, 0.1)' : 
+                               project.status === 'completed' ? 'rgba(34, 197, 94, 0.1)' : 'rgba(168, 85, 247, 0.1)',
+                    border: `1px solid ${project.status === 'in_progress' ? 'rgba(45, 212, 191, 0.3)' : 
+                                          project.status === 'completed' ? 'rgba(34, 197, 94, 0.3)' : 'rgba(168, 85, 247, 0.3)'}`,
+                    color: project.status === 'in_progress' ? '#2dd4bf' : 
+                           project.status === 'completed' ? '#22c55e' : '#a855f7',
+                    fontSize: '0.9rem',
+                    fontWeight: '600',
+                    textTransform: 'capitalize'
+                  }}>
+                    {project.status?.replace('_', ' ')}
+                  </div>
+                  <span style={{ 
+                    color: '#2dd4bf', 
+                    fontSize: '1.5rem'
+                  }}>
+                    {isExpanded ? '▼' : '▶'}
+                  </span>
+                </div>
+              </div>
+
+              {project.progress_percentage > 0 && (
+                <div style={{ marginTop: '1rem' }}>
+                  <div style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    marginBottom: '0.5rem'
+                  }}>
+                    <span style={{ color: '#cbd5e1', fontSize: '0.9rem' }}>Progress</span>
+                    <span style={{ color: '#2dd4bf', fontWeight: '600' }}>{project.progress_percentage}%</span>
+                  </div>
+                  <div style={{
+                    height: '8px',
+                    background: 'rgba(45, 212, 191, 0.1)',
+                    borderRadius: '4px',
+                    overflow: 'hidden'
+                  }}>
+                    <div style={{
+                      height: '100%',
+                      width: `${project.progress_percentage}%`,
+                      background: 'linear-gradient(90deg, #2dd4bf, #14b8a6)',
+                      transition: 'width 0.5s ease'
+                    }} />
+                  </div>
+                </div>
+              )}
+
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginTop: '1rem',
+                paddingTop: '1rem',
+                borderTop: '1px solid rgba(45, 212, 191, 0.1)'
+              }}>
+                <span style={{ color: '#94a3b8' }}>
+                  Total: <span style={{ color: '#2dd4bf', fontWeight: '600' }}>${project.total_amount?.toLocaleString()}</span>
+                </span>
+                <span style={{ color: '#94a3b8' }}>
+                  Paid: <span style={{ color: '#22c55e', fontWeight: '600' }}>${project.amount_paid?.toLocaleString() || '0'}</span>
+                </span>
+              </div>
+            </div>
+
+            {isExpanded && (
+              <div style={{ marginTop: '1.5rem', paddingTop: '1.5rem', borderTop: '1px solid rgba(45, 212, 191, 0.1)' }}>
+                {project.description && (
+                  <div style={{ marginBottom: '1.5rem' }}>
+                    <h4 style={{ 
+                      color: '#2dd4bf', 
+                      marginBottom: '0.5rem',
+                      fontSize: '1rem',
+                      fontWeight: '600'
+                    }}>
+                      Description
+                    </h4>
+                    <p style={{ color: '#cbd5e1', lineHeight: '1.6' }}>
+                      {project.description}
+                    </p>
+                  </div>
+                )}
+
+                {project.scope_of_work && (
+                  <div style={{ marginBottom: '1.5rem' }}>
+                    <h4 style={{ 
+                      color: '#2dd4bf', 
+                      marginBottom: '0.5rem',
+                      fontSize: '1rem',
+                      fontWeight: '600'
+                    }}>
+                      Scope of Work
+                    </h4>
+                    <p style={{ color: '#cbd5e1', lineHeight: '1.6' }}>
+                      {project.scope_of_work}
+                    </p>
+                  </div>
+                )}
+
+                <div style={{ marginTop: '1.5rem' }}>
+                  <MessageChat
+                    type="project"
+                    id={project.id}
+                    token={token}
+                    currentUser={{ user_type: 'customer' }}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// Customer Messages Tab Component
+function CustomerMessagesTab({ messages, quotes, projects, token }) {
+  const [expandedThreads, setExpandedThreads] = useState({});
+
+  // Group messages by quote_request_id or project_id
+  const groupedMessages = messages.reduce((acc, msg) => {
+    const threadKey = msg.quote_request_id 
+      ? `quote-${msg.quote_request_id}` 
+      : msg.project_id 
+      ? `project-${msg.project_id}` 
+      : 'other';
+    
+    if (!acc[threadKey]) {
+      acc[threadKey] = {
+        type: msg.quote_request_id ? 'quote' : 'project',
+        id: msg.quote_request_id || msg.project_id,
+        messages: []
+      };
+    }
+    acc[threadKey].messages.push(msg);
+    return acc;
+  }, {});
+
+  // Sort messages within each thread by date
+  Object.keys(groupedMessages).forEach(key => {
+    groupedMessages[key].messages.sort((a, b) => 
+      new Date(a.created_at) - new Date(b.created_at)
+    );
+  });
+
+  const toggleThread = (threadKey) => {
+    setExpandedThreads(prev => ({
+      ...prev,
+      [threadKey]: !prev[threadKey]
+    }));
+  };
+
+  const getThreadTitle = (thread) => {
+    if (thread.type === 'quote') {
+      const quote = quotes.find(q => q.id === thread.id);
+      return quote ? `Quote Request: ${quote.service_type || 'Service'}` : `Quote Request #${thread.id}`;
+    } else {
+      const project = projects.find(p => p.id === thread.id);
+      return project ? `Project: ${project.title || 'Project'}` : `Project #${thread.id}`;
+    }
+  };
+
+  if (messages.length === 0) {
+    return (
+      <div style={{
+        background: 'rgba(26, 31, 53, 0.5)',
+        border: '1px solid rgba(45, 212, 191, 0.15)',
+        borderRadius: '16px',
+        padding: '3rem',
+        textAlign: 'center',
+        backdropFilter: 'blur(10px)'
+      }}>
+        <h3 style={{ fontSize: '1.5rem', marginBottom: '0.5rem', color: '#e8edf5' }}>
+          No Messages Yet
+        </h3>
+        <p style={{ color: '#94a3b8' }}>
+          Your messages with our team will appear here.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ display: 'grid', gap: '1rem' }}>
+      {Object.entries(groupedMessages).map(([threadKey, thread]) => {
+        const isExpanded = expandedThreads[threadKey];
+        const latestMessage = thread.messages[thread.messages.length - 1];
+        
+        return (
+          <div
+            key={threadKey}
+            style={{
+              background: 'rgba(26, 31, 53, 0.5)',
+              border: '1px solid rgba(45, 212, 191, 0.15)',
+              borderRadius: '16px',
+              padding: '1.5rem',
+              backdropFilter: 'blur(10px)'
+            }}
+          >
+            <div
+              onClick={() => toggleThread(threadKey)}
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                cursor: 'pointer',
+                marginBottom: isExpanded ? '1rem' : '0'
+              }}
+            >
+              <div style={{ flex: 1 }}>
+                <h4 style={{ 
+                  fontSize: '1.1rem', 
+                  marginBottom: '0.25rem', 
+                  color: '#e8edf5',
+                  fontWeight: '600'
+                }}>
+                  {getThreadTitle(thread)}
+                </h4>
+                {!isExpanded && latestMessage && (
+                  <p style={{ 
+                    color: '#94a3b8', 
+                    fontSize: '0.9rem',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                    maxWidth: '600px'
+                  }}>
+                    {latestMessage.message}
+                  </p>
+                )}
+                <p style={{ 
+                  color: '#64748b', 
+                  fontSize: '0.8rem',
+                  marginTop: '0.25rem'
+                }}>
+                  {thread.messages.length} message{thread.messages.length !== 1 ? 's' : ''} • 
+                  Last: {new Date(latestMessage?.created_at).toLocaleDateString()}
+                </p>
+              </div>
+              <span style={{ 
+                color: '#2dd4bf', 
+                fontSize: '1.5rem',
+                marginLeft: '1rem'
+              }}>
+                {isExpanded ? '▼' : '▶'}
+              </span>
+            </div>
+
+            {isExpanded && (
+              <div style={{ marginTop: '1rem' }}>
+                <MessageChat
+                  type={thread.type}
+                  id={thread.id}
+                  token={token}
+                  currentUser={{ user_type: 'customer' }}
+                />
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function CustomerPortal({ user, token, onLogout }) {
   const [activeTab, setActiveTab] = useState('projects');
   const [projects, setProjects] = useState([]);
@@ -3935,168 +4300,17 @@ function CustomerPortal({ user, token, onLogout }) {
       
       {/* Projects Tab */}
       {!isLoading && activeTab === 'projects' && (
-        <div style={{ display: 'grid', gap: '1.5rem' }}>
-          {projects.length === 0 ? (
-            <div style={{
-              background: 'rgba(26, 31, 53, 0.5)',
-              border: '1px solid rgba(45, 212, 191, 0.15)',
-              borderRadius: '16px',
-              padding: '3rem',
-              textAlign: 'center',
-              backdropFilter: 'blur(10px)'
-            }}>
-              <h3 style={{ fontSize: '1.5rem', marginBottom: '0.5rem', color: '#e8edf5' }}>
-                No Active Projects
-              </h3>
-              <p style={{ color: '#94a3b8' }}>
-                Once a quote is accepted, your project will appear here.
-              </p>
-            </div>
-          ) : (
-            projects.map(project => (
-              <div
-                key={project.id}
-                style={{
-                  background: 'rgba(26, 31, 53, 0.5)',
-                  border: '1px solid rgba(45, 212, 191, 0.15)',
-                  borderRadius: '16px',
-                  padding: '2rem',
-                  backdropFilter: 'blur(10px)'
-                }}
-              >
-                <div style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'start',
-                  marginBottom: '1.5rem',
-                  flexWrap: 'wrap',
-                  gap: '1rem'
-                }}>
-                  <div>
-                    <h3 style={{
-                      fontSize: '1.5rem',
-                      marginBottom: '0.5rem',
-                      color: '#e8edf5',
-                      fontWeight: '600'
-                    }}>
-                      {project.title}
-                    </h3>
-                    {project.start_date && (
-                      <p style={{ color: '#94a3b8' }}>
-                        Started: {new Date(project.start_date).toLocaleDateString()}
-                      </p>
-                    )}
-                  </div>
-                  <div style={{
-                    padding: '0.5rem 1rem',
-                    borderRadius: '8px',
-                    background: project.status === 'in_progress' ? 'rgba(45, 212, 191, 0.1)' : 
-                               project.status === 'completed' ? 'rgba(34, 197, 94, 0.1)' : 'rgba(168, 85, 247, 0.1)',
-                    border: `1px solid ${project.status === 'in_progress' ? 'rgba(45, 212, 191, 0.3)' : 
-                                          project.status === 'completed' ? 'rgba(34, 197, 94, 0.3)' : 'rgba(168, 85, 247, 0.3)'}`,
-                    color: project.status === 'in_progress' ? '#2dd4bf' : 
-                           project.status === 'completed' ? '#22c55e' : '#a855f7',
-                    fontSize: '0.9rem',
-                    fontWeight: '600',
-                    textTransform: 'capitalize'
-                  }}>
-                    {project.status?.replace('_', ' ')}
-                  </div>
-                </div>
-
-                {project.progress_percentage > 0 && (
-                  <div style={{ marginBottom: '1.5rem' }}>
-                    <div style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      marginBottom: '0.5rem'
-                    }}>
-                      <span style={{ color: '#cbd5e1', fontSize: '0.9rem' }}>Progress</span>
-                      <span style={{ color: '#2dd4bf', fontWeight: '600' }}>{project.progress_percentage}%</span>
-                    </div>
-                    <div style={{
-                      height: '8px',
-                      background: 'rgba(45, 212, 191, 0.1)',
-                      borderRadius: '4px',
-                      overflow: 'hidden'
-                    }}>
-                      <div style={{
-                        height: '100%',
-                        width: `${project.progress_percentage}%`,
-                        background: 'linear-gradient(90deg, #2dd4bf, #14b8a6)',
-                        transition: 'width 0.5s ease'
-                      }} />
-                    </div>
-                  </div>
-                )}
-
-                <div style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  paddingTop: '1rem',
-                  borderTop: '1px solid rgba(45, 212, 191, 0.1)'
-                }}>
-                  <span style={{ color: '#94a3b8' }}>
-                    Total: <span style={{ color: '#2dd4bf', fontWeight: '600' }}>${project.total_amount?.toLocaleString()}</span>
-                  </span>
-                  <span style={{ color: '#94a3b8' }}>
-                    Paid: <span style={{ color: '#22c55e', fontWeight: '600' }}>${project.amount_paid?.toLocaleString() || '0'}</span>
-                  </span>
-                </div>
-              </div>
-            ))
-          )}
-        </div>
+        <CustomerProjectsTab projects={projects} token={token} />
       )}
 
       {/* Messages Tab */}
       {!isLoading && activeTab === 'messages' && (
-        <div style={{
-          background: 'rgba(26, 31, 53, 0.5)',
-          border: '1px solid rgba(45, 212, 191, 0.15)',
-          borderRadius: '16px',
-          padding: '3rem',
-          textAlign: 'center',
-          backdropFilter: 'blur(10px)'
-        }}>
-          {messages.length === 0 ? (
-            <>
-              <h3 style={{ fontSize: '1.5rem', marginBottom: '0.5rem', color: '#e8edf5' }}>
-                No Messages Yet
-              </h3>
-              <p style={{ color: '#94a3b8' }}>
-                Your messages with our team will appear here.
-              </p>
-            </>
-          ) : (
-            <div style={{ textAlign: 'left' }}>
-              {messages.map(msg => (
-                <div
-                  key={msg.id}
-                  style={{
-                    padding: '1rem',
-                    background: 'rgba(10, 15, 30, 0.5)',
-                    borderRadius: '10px',
-                    marginBottom: '0.75rem',
-                    borderLeft: '3px solid #2dd4bf'
-                  }}
-                >
-                  <div style={{
-                    fontSize: '0.85rem',
-                    color: '#94a3b8',
-                    marginBottom: '0.25rem'
-                  }}>
-                    {msg.sender_first_name} {msg.sender_last_name} • {new Date(msg.created_at).toLocaleDateString()}
-                  </div>
-                  <div style={{ color: '#cbd5e1' }}>
-                    {msg.message}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+        <CustomerMessagesTab 
+          messages={messages} 
+          quotes={quotes} 
+          projects={projects} 
+          token={token} 
+        />
       )}
     </div>
   );
