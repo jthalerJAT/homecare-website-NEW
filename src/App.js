@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Home, Calendar, CheckCircle, Users, MessageSquare, DollarSign, Search, Menu, X, ArrowRight, Star, Phone, Mail, MapPin, Clock } from 'lucide-react';
 
 // Main App Component
@@ -2226,30 +2226,40 @@ function AdminMessages({ token }) {
   const [selectedConversation, setSelectedConversation] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    const fetchConversations = async () => {
-      try {
-        const response = await fetch('https://gpc-backend-production.up.railway.app/api/admin/conversations', {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-        const data = await response.json();
-        setConversations(data.conversations || []);
-      } catch (error) {
-        console.error('Error fetching conversations:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchConversations();
+  const fetchConversations = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const response = await fetch('https://gpc-backend-production.up.railway.app/api/admin/conversations', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await response.json();
+      setConversations(data.conversations || []);
+    } catch (error) {
+      console.error('Error fetching conversations:', error);
+    } finally {
+      setIsLoading(false);
+    }
   }, [token]);
+
+  useEffect(() => {
+    fetchConversations();
+  }, [fetchConversations]);
+
+  // Refresh conversations when returning to the list to get updated unread counts
+  useEffect(() => {
+    if (selectedConversation === null) {
+      fetchConversations();
+    }
+  }, [selectedConversation, fetchConversations]);
 
   if (isLoading) {
     return <div style={{ textAlign: 'center', padding: '2rem', color: '#94a3b8' }}>Loading conversations...</div>;
   }
 
-  // Filter to only show conversations that have messages or recent activity
-  const activeConversations = conversations.filter(c => c.last_message || c.unread_count > 0);
+  // Show all conversations - the backend API should only return conversations with messages
+  // If a conversation has no last_message and no unread_count, it might still have messages
+  // so we show all conversations returned by the API
+  const activeConversations = conversations;
 
   if (selectedConversation) {
     return (
