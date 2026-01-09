@@ -2050,11 +2050,16 @@ function MessageChat({ type, id, token, currentUser }) {
                       : (msg.attachments || []);
                     return parsedAttachments.length > 0 && (
                       <div style={{ marginTop: '0.5rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                        {parsedAttachments.map((url, i) => {
+                        {parsedAttachments.map((attachment, i) => {
+                          // Extract URL - handle both string and object formats
+                          const urlString = typeof attachment === 'string' 
+                            ? attachment 
+                            : (attachment.url || attachment.photoUrl || attachment.photo_url || attachment.imageUrl || attachment.image_url || '');
+                          
                           // Ensure full URL - if it's not already a full URL, prepend backend URL
-                          const fullUrl = url.startsWith('http://') || url.startsWith('https://')
-                            ? url
-                            : `https://gpc-backend-production.up.railway.app${url.startsWith('/') ? '' : '/'}${url}`;
+                          const fullUrl = urlString.startsWith('http://') || urlString.startsWith('https://')
+                            ? urlString
+                            : `https://gpc-backend-production.up.railway.app${urlString.startsWith('/') ? '' : '/'}${urlString}`;
                           
                           return (
                             <img 
