@@ -2044,22 +2044,27 @@ function MessageChat({ type, id, token, currentUser }) {
                     {isGPCRep ? 'GPC Rep' : `${msg.first_name || 'Customer'}`}
                   </p>
                   <p style={{ margin: 0, fontSize: '0.95rem' }}>{msg.message}</p>
-                  {msg.attachments && JSON.parse(msg.attachments || '[]').length > 0 && (
-                    <div style={{ marginTop: '0.5rem' }}>
-                      {JSON.parse(msg.attachments).map((url, i) => (
-                        <img 
-                          key={i} 
-                          src={url} 
-                          alt="attachment" 
-                          style={{ 
-                            maxWidth: '200px', 
-                            borderRadius: '8px',
-                            marginTop: '0.5rem'
-                          }} 
-                        />
-                      ))}
-                    </div>
-                  )}
+                  {(() => {
+                    const parsedAttachments = typeof msg.attachments === 'string' 
+                      ? JSON.parse(msg.attachments || '[]') 
+                      : (msg.attachments || []);
+                    return parsedAttachments.length > 0 && (
+                      <div style={{ marginTop: '0.5rem' }}>
+                        {parsedAttachments.map((url, i) => (
+                          <img 
+                            key={i} 
+                            src={url} 
+                            alt="attachment" 
+                            style={{ 
+                              maxWidth: '200px', 
+                              borderRadius: '8px',
+                              marginTop: '0.5rem'
+                            }} 
+                          />
+                        ))}
+                      </div>
+                    );
+                  })()}
                 </div>
                 <span style={{ 
                   fontSize: '0.7rem', 
