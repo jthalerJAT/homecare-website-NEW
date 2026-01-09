@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Home, Calendar, CheckCircle, Users, MessageSquare, DollarSign, Search, Menu, X, ArrowRight, Star, Phone, Mail, MapPin, Clock } from 'lucide-react';
 
 // Main App Component
@@ -1808,6 +1808,10 @@ function MessageChat({ type, id, token, currentUser }) {
   const [newMessage, setNewMessage] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [isSending, setIsSending] = useState(false);
+  const [attachments, setAttachments] = useState([]);
+  const [imagePreviews, setImagePreviews] = useState([]);
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef(null);
 
   // Fetch messages
   useEffect(() => {
@@ -1831,13 +1835,21 @@ function MessageChat({ type, id, token, currentUser }) {
   }, [token, id, type]);
 
   const handleSend = async () => {
-    if (!newMessage.trim()) return;
+    if (!newMessage.trim() && attachments.length === 0) return;
 
     setIsSending(true);
     try {
       const body = type === 'quote' 
-        ? { quoteRequestId: id, message: newMessage }
-        : { projectId: id, message: newMessage };
+        ? { 
+            quoteRequestId: id, 
+            message: newMessage,
+            attachments: attachments.length > 0 ? JSON.stringify(attachments) : undefined
+          }
+        : { 
+            projectId: id, 
+            message: newMessage,
+            attachments: attachments.length > 0 ? JSON.stringify(attachments) : undefined
+          };
 
       const response = await fetch('https://gpc-backend-production.up.railway.app/api/messages', {
         method: 'POST',
@@ -1852,6 +1864,8 @@ function MessageChat({ type, id, token, currentUser }) {
         const data = await response.json();
         setMessages([...messages, data.message]);
         setNewMessage('');
+        setAttachments([]);
+        setImagePreviews([]);
       }
     } catch (error) {
       console.error('Error sending message:', error);
@@ -1869,6 +1883,80 @@ function MessageChat({ type, id, token, currentUser }) {
       minute: '2-digit',
       hour12: true
     });
+  };
+
+  const handleCameraClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const convertToBase64 = (file) => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const handleFileSelect = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      alert('Please select an image file');
+      return;
+    }
+
+    // Validate file size (e.g., max 10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      alert('Image size must be less than 10MB');
+      return;
+    }
+
+    setIsUploading(true);
+    try {
+      // Convert to base64
+      const base64 = await convertToBase64(file);
+      
+      // Upload to backend
+      const response = await fetch('https://gpc-backend-production.up.railway.app/api/upload-photo', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ image: base64 })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to upload image');
+      }
+
+      const data = await response.json();
+      const photoUrl = data.url || data.photoUrl || data.photo_url;
+
+      if (photoUrl) {
+        // Add to attachments
+        setAttachments([...attachments, photoUrl]);
+        // Add preview
+        setImagePreviews([...imagePreviews, { url: photoUrl, preview: base64 }]);
+      }
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      alert('Failed to upload image. Please try again.');
+    } finally {
+      setIsUploading(false);
+      // Reset file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
+  const removeAttachment = (index) => {
+    setAttachments(attachments.filter((_, i) => i !== index));
+    setImagePreviews(imagePreviews.filter((_, i) => i !== index));
   };
 
   return (
@@ -1958,8 +2046,72 @@ function MessageChat({ type, id, token, currentUser }) {
         )}
       </div>
 
+      {/* Image Previews */}
+      {imagePreviews.length > 0 && (
+        <div style={{
+          display: 'flex',
+          gap: '0.5rem',
+          marginBottom: '0.75rem',
+          flexWrap: 'wrap'
+        }}>
+          {imagePreviews.map((preview, index) => (
+            <div
+              key={index}
+              style={{
+                position: 'relative',
+                width: '80px',
+                height: '80px',
+                borderRadius: '8px',
+                overflow: 'hidden',
+                border: '1px solid rgba(45, 212, 191, 0.3)'
+              }}
+            >
+              <img
+                src={preview.preview}
+                alt="Preview"
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  objectFit: 'cover'
+                }}
+              />
+              <button
+                onClick={() => removeAttachment(index)}
+                style={{
+                  position: 'absolute',
+                  top: '4px',
+                  right: '4px',
+                  background: 'rgba(0, 0, 0, 0.7)',
+                  border: 'none',
+                  borderRadius: '50%',
+                  width: '24px',
+                  height: '24px',
+                  color: '#fff',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '14px',
+                  padding: 0
+                }}
+                title="Remove image"
+              >
+                ×
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* Input Area */}
       <div style={{ display: 'flex', gap: '0.5rem' }}>
+        <input
+          type="file"
+          ref={fileInputRef}
+          accept="image/*"
+          onChange={handleFileSelect}
+          style={{ display: 'none' }}
+        />
         <input
           type="text"
           value={newMessage}
@@ -1977,27 +2129,28 @@ function MessageChat({ type, id, token, currentUser }) {
           }}
         />
         <button
-          onClick={() => {}}
+          onClick={handleCameraClick}
+          disabled={isUploading}
           style={{
             padding: '0.75rem',
-            background: 'rgba(45, 212, 191, 0.1)',
+            background: isUploading ? 'rgba(45, 212, 191, 0.3)' : 'rgba(45, 212, 191, 0.1)',
             border: '1px solid rgba(45, 212, 191, 0.3)',
             borderRadius: '10px',
             color: '#2dd4bf',
             fontSize: '1.2rem',
-            cursor: 'pointer',
+            cursor: isUploading ? 'wait' : 'pointer',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             minWidth: '44px'
           }}
-          title="Upload photo"
+          title={isUploading ? 'Uploading...' : 'Upload photo'}
         >
-          📷
+          {isUploading ? '⏳' : '📷'}
         </button>
         <button
           onClick={handleSend}
-          disabled={isSending || !newMessage.trim()}
+          disabled={isSending || (!newMessage.trim() && attachments.length === 0)}
           style={{
             padding: '0.75rem 1.25rem',
             background: isSending ? 'rgba(45, 212, 191, 0.5)' : 'linear-gradient(135deg, #2dd4bf 0%, #14b8a6 100%)',
@@ -2005,7 +2158,8 @@ function MessageChat({ type, id, token, currentUser }) {
             borderRadius: '10px',
             color: '#0a0f1e',
             fontWeight: '600',
-            cursor: isSending ? 'wait' : 'pointer'
+            cursor: isSending ? 'wait' : (newMessage.trim() || attachments.length > 0 ? 'pointer' : 'not-allowed'),
+            opacity: (newMessage.trim() || attachments.length > 0) ? 1 : 0.5
           }}
         >
           {isSending ? '...' : 'Send'}
