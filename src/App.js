@@ -1850,14 +1850,13 @@ function MessageChat({ type, id, token, currentUser }) {
             message: newMessage || ''
           };
 
-      // Add attachments if present - send as JSON string to match backend storage format
+      // Add attachments if present - send as array, fetch API will handle JSON conversion
       if (attachments.length > 0) {
-        body.attachments = JSON.stringify(attachments);
+        body.attachments = attachments;
       }
 
       console.log('Sending message with body:', body);
       console.log('Attachments array:', attachments);
-      console.log('Attachments as JSON string:', body.attachments);
 
       const response = await fetch('https://gpc-backend-production.up.railway.app/api/messages', {
         method: 'POST',
