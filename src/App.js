@@ -3245,11 +3245,20 @@ function AdminDashboard({ user, token, onLogout }) {
       setIsLoading(true);
       try {
         // Fetch all quote requests (admin endpoint)
-        const response = await fetch('https://gpc-backend-production.up.railway.app/api/admin/quotes', {
+        const quotesResponse = await fetch('https://gpc-backend-production.up.railway.app/api/admin/quotes', {
           headers: { 'Authorization': `Bearer ${token}` }
         });
-        const data = await response.json();
-        setQuotes(data.quoteRequests || []);
+        const quotesData = await quotesResponse.json();
+        setQuotes(quotesData.quoteRequests || []);
+
+        // Fetch all projects
+        const projectsResponse = await fetch('https://gpc-backend-production.up.railway.app/api/projects', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (projectsResponse.ok) {
+          const projectsData = await projectsResponse.json();
+          setProjects(projectsData.projects || []);
+        }
       } catch (error) {
         console.error('Error fetching data:', error);
       } finally {
@@ -3754,18 +3763,7 @@ function AdminDashboard({ user, token, onLogout }) {
           
       {/* Projects Tab */}
       {!isLoading && activeTab === 'projects' && (
-        <div style={{
-          background: 'rgba(26, 31, 53, 0.5)',
-          border: '1px solid rgba(45, 212, 191, 0.15)',
-          borderRadius: '16px',
-          padding: '3rem',
-          textAlign: 'center'
-        }}>
-          <h3 style={{ color: '#e8edf5', marginBottom: '0.5rem' }}>Projects Coming Soon</h3>
-          <p style={{ color: '#94a3b8' }}>
-            When customers accept quotes, projects will be created and managed here.
-          </p>
-        </div>
+        <CustomerProjectsTab projects={projects} token={token} />
       )}
 
       {/* Messages Tab */}
@@ -3804,6 +3802,26 @@ function CustomerProjectsTab({ projects, token }) {
     }));
   };
 
+  // Helper function to format project title
+  const getProjectTitle = (project) => {
+    const serviceType = project.service_type || project.title || 'Project';
+    const description = project.description || '';
+    const descriptionPreview = description.length > 50 
+      ? description.substring(0, 50) + '...' 
+      : description;
+    
+    return descriptionPreview 
+      ? `${serviceType} - ${descriptionPreview}`
+      : serviceType;
+  };
+
+  // Sort projects by newest first (created_at descending)
+  const sortedProjects = [...projects].sort((a, b) => {
+    const dateA = new Date(a.created_at || a.start_date || 0);
+    const dateB = new Date(b.created_at || b.start_date || 0);
+    return dateB - dateA; // Newest first
+  });
+
   if (projects.length === 0) {
     return (
       <div style={{
@@ -3826,7 +3844,7 @@ function CustomerProjectsTab({ projects, token }) {
 
   return (
     <div style={{ display: 'grid', gap: '1.5rem' }}>
-      {projects.map(project => {
+      {sortedProjects.map(project => {
         const isExpanded = expandedProjects[project.id];
         
         return (
@@ -3861,7 +3879,7 @@ function CustomerProjectsTab({ projects, token }) {
                     color: '#e8edf5',
                     fontWeight: '600'
                   }}>
-                    {project.title}
+                    {getProjectTitle(project)}
                   </h3>
                   {project.start_date && (
                     <p style={{ color: '#94a3b8', marginBottom: '0.5rem' }}>
@@ -4036,7 +4054,18 @@ function CustomerMessagesTab({ messages, quotes, projects, token }) {
       return quote ? `Quote Request: ${quote.service_type || 'Service'}` : `Quote Request #${thread.id}`;
     } else {
       const project = projects.find(p => p.id === thread.id);
-      return project ? `Project: ${project.title || 'Project'}` : `Project #${thread.id}`;
+      if (project) {
+        const serviceType = project.service_type || project.title || 'Project';
+        const description = project.description || '';
+        const descriptionPreview = description.length > 50 
+          ? description.substring(0, 50) + '...' 
+          : description;
+        const title = descriptionPreview 
+          ? `${serviceType} - ${descriptionPreview}`
+          : serviceType;
+        return `Project: ${title}`;
+      }
+      return `Project #${thread.id}`;
     }
   };
 
