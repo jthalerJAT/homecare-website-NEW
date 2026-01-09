@@ -2049,19 +2049,37 @@ function MessageChat({ type, id, token, currentUser }) {
                       ? JSON.parse(msg.attachments || '[]') 
                       : (msg.attachments || []);
                     return parsedAttachments.length > 0 && (
-                      <div style={{ marginTop: '0.5rem' }}>
-                        {parsedAttachments.map((url, i) => (
-                          <img 
-                            key={i} 
-                            src={url} 
-                            alt="attachment" 
-                            style={{ 
-                              maxWidth: '200px', 
-                              borderRadius: '8px',
-                              marginTop: '0.5rem'
-                            }} 
-                          />
-                        ))}
+                      <div style={{ marginTop: '0.5rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                        {parsedAttachments.map((url, i) => {
+                          // Ensure full URL - if it's not already a full URL, prepend backend URL
+                          const fullUrl = url.startsWith('http://') || url.startsWith('https://')
+                            ? url
+                            : `https://gpc-backend-production.up.railway.app${url.startsWith('/') ? '' : '/'}${url}`;
+                          
+                          return (
+                            <img 
+                              key={i} 
+                              src={fullUrl} 
+                              alt="Attachment" 
+                              style={{ 
+                                maxWidth: '200px', 
+                                maxHeight: '200px',
+                                width: 'auto',
+                                height: 'auto',
+                                borderRadius: '8px',
+                                marginTop: '0.5rem',
+                                objectFit: 'cover',
+                                border: '1px solid rgba(45, 212, 191, 0.3)',
+                                cursor: 'pointer'
+                              }}
+                              onError={(e) => {
+                                console.error('Failed to load image:', fullUrl);
+                                e.target.style.display = 'none';
+                              }}
+                              onClick={() => window.open(fullUrl, '_blank')}
+                            />
+                          );
+                        })}
                       </div>
                     );
                   })()}
