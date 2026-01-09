@@ -1977,6 +1977,25 @@ function MessageChat({ type, id, token, currentUser }) {
           }}
         />
         <button
+          onClick={() => {}}
+          style={{
+            padding: '0.75rem',
+            background: 'rgba(45, 212, 191, 0.1)',
+            border: '1px solid rgba(45, 212, 191, 0.3)',
+            borderRadius: '10px',
+            color: '#2dd4bf',
+            fontSize: '1.2rem',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            minWidth: '44px'
+          }}
+          title="Upload photo"
+        >
+          📷
+        </button>
+        <button
           onClick={handleSend}
           disabled={isSending || !newMessage.trim()}
           style={{
