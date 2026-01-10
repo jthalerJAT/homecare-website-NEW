@@ -1338,7 +1338,7 @@ function QuoteCard({ quote, token, onUpdate }) {
       </p>
       
       {/* Show "View Quote" button if status is 'quoted' */}
-{quote.status === 'quoted' ? (
+{quote.status === 'quoted' && (
   <button
     onClick={fetchQuoteDetails}
     disabled={isLoading}
@@ -1355,9 +1355,7 @@ function QuoteCard({ quote, token, onUpdate }) {
   >
     {isLoading ? 'Loading...' : showDetails ? 'Hide Quote Details' : '💰 View Quote & Pricing'}
   </button>
-) : (
-  )}
-
+)}
       {/* Quote Details */}
       {showDetails && quoteDetails && quoteDetails.length > 0 && (
         <div style={{
