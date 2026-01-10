@@ -1336,8 +1336,7 @@ function QuoteCard({ quote, token, onUpdate }) {
       <p style={{ color: '#cbd5e1', fontSize: '0.95rem', marginBottom: '1rem' }}>
         {quote.description}
       </p>
-      <p style={{color: 'red', fontWeight: 'bold'}}>TEST - CAN YOU SEE THIS?</p>
-
+      
       {/* Show "View Quote" button if status is 'quoted' */}
 {quote.status === 'quoted' ? (
   <button
@@ -1357,8 +1356,7 @@ function QuoteCard({ quote, token, onUpdate }) {
     {isLoading ? 'Loading...' : showDetails ? 'Hide Quote Details' : '💰 View Quote & Pricing'}
   </button>
 ) : (
-  <p style={{color: '#fbbf24'}}>DEBUG: Status is "{quote.status}" (not showing button)</p>
-)}
+  )}
 
       {/* Quote Details */}
       {showDetails && quoteDetails && quoteDetails.length > 0 && (
