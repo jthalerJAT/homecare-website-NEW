@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Home, Calendar, CheckCircle, Users, MessageSquare, DollarSign, Search, Menu, X, ArrowRight, Star, Phone, Mail, MapPin, Clock } from 'lucide-react';
+import { Calendar, CheckCircle, DollarSign, Menu, X, ArrowRight, Star, Phone, Mail, Clock } from 'lucide-react';
 
 // Main App Component
 // API Configuration
@@ -120,12 +120,6 @@ export default function HomeCareWebsite() {
     setCurrentPage('home');
   };
   
-  // Animation state
-  const [hasAnimated, setHasAnimated] = useState(false);
-  
-  useEffect(() => {
-    setHasAnimated(true);
-  }, []);
 
   const renderPage = () => {
     switch(currentPage) {
