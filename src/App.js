@@ -265,9 +265,9 @@ function Navigation({ currentPage, setCurrentPage, mobileMenuOpen, setMobileMenu
         padding: '0 2rem',
         height: '220px',
         display: 'grid',
-        gridTemplateColumns: '280px 1fr auto',
+        gridTemplateColumns: '300px 1fr auto',
         alignItems: 'center',
-        gap: '3rem'
+        gap: '6rem'
       }}>
         <div
           onClick={() => setCurrentPage('home')}
@@ -281,8 +281,8 @@ function Navigation({ currentPage, setCurrentPage, mobileMenuOpen, setMobileMenu
         </div>
 
         {/* Desktop Menu */}
-        <div style={{ display: 'flex', gap: '2.5rem', alignItems: 'center' }}>
-          <div style={{ display: 'flex', gap: '2.5rem', '@media (max-width: 768px)': { display: 'none' } }}>
+        <div style={{ display: 'flex', gap: '30px', alignItems: 'center' }}>
+          <div style={{ display: 'flex', gap: '30px', '@media (max-width: 768px)': { display: 'none' } }}>
             {['home', 'services', 'request-quote', 'about', 'portal'].map(page => (
               <button
                 key={page}
@@ -341,7 +341,7 @@ function Navigation({ currentPage, setCurrentPage, mobileMenuOpen, setMobileMenu
         <div style={{
           background: '#0a0a0a',
           borderTop: '1px solid rgba(220, 38, 38, 0.3)',
-          padding: '1.5rem 2rem'
+          padding: '20px'
         }}>
           {['home', 'services', 'request-quote', 'about', 'portal'].map(page => (
             <button
@@ -380,7 +380,7 @@ function HomePage({ setCurrentPage }) {
     <div>
       {/* Hero Section */}
       <section style={{
-        padding: '6rem 2rem',
+        padding: '60px 2rem',
         textAlign: 'center',
         position: 'relative'
       }}>
@@ -388,7 +388,7 @@ function HomePage({ setCurrentPage }) {
           <h1 className="animate-in" style={{
             fontFamily: '"Oswald", sans-serif',
             fontSize: 'clamp(2.5rem, 6vw, 4.5rem)',
-            marginBottom: '1.5rem',
+            marginBottom: '20px',
             lineHeight: '1.1',
             background: 'linear-gradient(135deg, #ffffff 0%, #dc2626 100%)',
             WebkitBackgroundClip: 'text',
@@ -402,10 +402,10 @@ function HomePage({ setCurrentPage }) {
           <p className="animate-in" style={{
             fontSize: '1.25rem',
             color: '#d4d4d4',
-            marginBottom: '3rem',
+            marginBottom: '30px',
             lineHeight: '1.7',
             maxWidth: '700px',
-            margin: '0 auto 3rem',
+            margin: '0 auto 30px',
             animationDelay: '0.3s',
             opacity: 0
           }}>
@@ -413,7 +413,7 @@ function HomePage({ setCurrentPage }) {
           </p>
           <div className="animate-in" style={{
             display: 'flex',
-            gap: '1.5rem',
+            gap: '20px',
             justifyContent: 'center',
             flexWrap: 'wrap',
             animationDelay: '0.5s',
@@ -434,7 +434,7 @@ function HomePage({ setCurrentPage }) {
                 boxShadow: '0 8px 24px rgba(220, 38, 38, 0.3), 0 0 0 0 rgba(220, 38, 38, 0.4)',
                 display: 'flex',
                 alignItems: 'center',
-                gap: '0.5rem'
+                gap: '10px'
               }}
               onMouseEnter={(e) => {
                 e.target.style.transform = 'translateY(-2px)';
@@ -479,11 +479,11 @@ function HomePage({ setCurrentPage }) {
       </section>
 
       {/* Features Grid */}
-      <section style={{ padding: '4rem 2rem', maxWidth: '1400px', margin: '0 auto' }}>
+      <section style={{ padding: '60px 2rem', maxWidth: '1400px', margin: '0 auto' }}>
         <div style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-          gap: '2rem'
+          gap: '20px'
         }}>
           {[
             { icon: CheckCircle, title: 'Vetted Professionals', desc: 'All contractors are background-checked and verified' },
@@ -498,7 +498,7 @@ function HomePage({ setCurrentPage }) {
                 background: 'rgba(20, 20, 20, 0.5)',
                 border: '1px solid rgba(220, 38, 38, 0.15)',
                 borderRadius: '16px',
-                padding: '2rem',
+                padding: '20px',
                 transition: 'all 0.3s ease',
                 cursor: 'default',
                 animationDelay: `${0.1 * i}s`,
@@ -547,17 +547,17 @@ function HomePage({ setCurrentPage }) {
 
       {/* CTA Section */}
       <section style={{
-        padding: '5rem 2rem',
+        padding: '60px 2rem',
         textAlign: 'center',
         background: 'linear-gradient(135deg, rgba(220, 38, 38, 0.08) 0%, rgba(255, 255, 255, 0.08) 100%)',
         borderTop: '1px solid rgba(220, 38, 38, 0.15)',
         borderBottom: '1px solid rgba(220, 38, 38, 0.15)',
-        margin: '4rem 0'
+        margin: '40px 0'
       }}>
         <h2 style={{
           fontFamily: '"Oswald", sans-serif',
           fontSize: 'clamp(2rem, 4vw, 3rem)',
-          marginBottom: '1.5rem',
+          marginBottom: '20px',
           color: '#f5f5f5'
         }}>
           Ready to Get Started?
@@ -565,9 +565,9 @@ function HomePage({ setCurrentPage }) {
         <p style={{
           fontSize: '1.15rem',
           color: '#d4d4d4',
-          marginBottom: '2.5rem',
+          marginBottom: '20px',
           maxWidth: '600px',
-          margin: '0 auto 2.5rem'
+          margin: '0 auto 30px'
         }}>
           Tell us about your project and get a detailed quote within 24 hours
         </p>
@@ -627,8 +627,8 @@ function ServicesPage({ setCurrentPage }) {
   ];
 
   return (
-    <div style={{ padding: '4rem 2rem', maxWidth: '1400px', margin: '0 auto' }}>
-      <div style={{ textAlign: 'center', marginBottom: '4rem' }}>
+    <div style={{ padding: '60px 2rem', maxWidth: '1400px', margin: '0 auto' }}>
+      <div style={{ textAlign: 'center', marginBottom: '40px' }}>
         <h1 className="animate-in" style={{
           fontFamily: '"Oswald", sans-serif',
           fontSize: 'clamp(2.5rem, 5vw, 3.5rem)',
@@ -655,8 +655,8 @@ function ServicesPage({ setCurrentPage }) {
       <div style={{
         display: 'grid',
         gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
-        gap: '2.5rem',
-        marginBottom: '4rem'
+        gap: '30px',
+        marginBottom: '40px'
       }}>
         {services.map((service, i) => (
           <div
@@ -666,7 +666,7 @@ function ServicesPage({ setCurrentPage }) {
               background: 'rgba(20, 20, 20, 0.5)',
               border: '1px solid rgba(220, 38, 38, 0.15)',
               borderRadius: '20px',
-              padding: '2.5rem',
+              padding: '20px',
               transition: 'all 0.3s ease',
               animationDelay: `${0.1 * i}s`,
               opacity: 0,
@@ -686,7 +686,7 @@ function ServicesPage({ setCurrentPage }) {
             <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>{service.icon}</div>
             <h3 style={{
               fontSize: '1.5rem',
-              marginBottom: '1.5rem',
+              marginBottom: '20px',
               color: '#f5f5f5',
               fontWeight: '600'
             }}>
@@ -700,7 +700,7 @@ function ServicesPage({ setCurrentPage }) {
                   borderBottom: j < service.items.length - 1 ? '1px solid rgba(255, 255, 255, 0.05)' : 'none',
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '0.75rem'
+                  gap: '10px'
                 }}>
                   <CheckCircle size={16} color="#dc2626" style={{ flexShrink: 0 }} />
                   <span>{item}</span>
@@ -713,7 +713,7 @@ function ServicesPage({ setCurrentPage }) {
 
       <div style={{
         textAlign: 'center',
-        padding: '3rem',
+        padding: '20px',
         background: 'rgba(220, 38, 38, 0.05)',
         borderRadius: '20px',
         border: '1px solid rgba(220, 38, 38, 0.2)'
@@ -729,9 +729,9 @@ function ServicesPage({ setCurrentPage }) {
         <p style={{
           fontSize: '1.05rem',
           color: '#d4d4d4',
-          marginBottom: '2rem',
+          marginBottom: '20px',
           maxWidth: '600px',
-          margin: '0 auto 2rem'
+          margin: '0 auto 20px'
         }}>
           We handle all types of home care projects. Contact us to discuss your specific needs.
         </p>
@@ -867,12 +867,12 @@ function RequestQuotePage({ user, token, isAuthenticated }) {
 
   if (submitted) {
     return (
-      <div style={{ padding: '6rem 2rem', textAlign: 'center', maxWidth: '700px', margin: '0 auto' }}>
+      <div style={{ padding: '60px 2rem', textAlign: 'center', maxWidth: '700px', margin: '0 auto' }}>
         <div className="animate-scale" style={{
           background: 'rgba(220, 38, 38, 0.1)',
           border: '2px solid rgba(220, 38, 38, 0.3)',
           borderRadius: '24px',
-          padding: '4rem 2rem',
+          padding: '60px 2rem',
           opacity: 0
         }}>
           <div style={{
@@ -883,7 +883,7 @@ function RequestQuotePage({ user, token, isAuthenticated }) {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            margin: '0 auto 2rem',
+            margin: '0 auto 20px',
             boxShadow: '0 8px 32px rgba(220, 38, 38, 0.4)'
           }}>
             <CheckCircle size={48} color="#0a0a0a" />
@@ -900,7 +900,7 @@ function RequestQuotePage({ user, token, isAuthenticated }) {
             fontSize: '1.15rem',
             color: '#d4d4d4',
             lineHeight: '1.7',
-            marginBottom: '2rem'
+            marginBottom: '20px'
           }}>
             Thank you for your request. We'll review your project details and send you a detailed quote within 24 hours.
           </p>
@@ -919,8 +919,8 @@ function RequestQuotePage({ user, token, isAuthenticated }) {
   }
 
   return (
-    <div style={{ padding: '4rem 2rem', maxWidth: '800px', margin: '0 auto' }}>
-      <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
+    <div style={{ padding: '60px 2rem', maxWidth: '800px', margin: '0 auto' }}>
+      <div style={{ textAlign: 'center', marginBottom: '30px' }}>
         <h1 className="animate-in" style={{
           fontFamily: '"Oswald", sans-serif',
           fontSize: 'clamp(2.5rem, 5vw, 3.5rem)',
@@ -962,12 +962,12 @@ function RequestQuotePage({ user, token, isAuthenticated }) {
         background: 'rgba(20, 20, 20, 0.5)',
         border: '1px solid rgba(220, 38, 38, 0.15)',
         borderRadius: '24px',
-        padding: '3rem',
+        padding: '20px',
         backdropFilter: 'blur(10px)',
         opacity: 0,
         animationDelay: '0.3s'
       }}>
-        <div style={{ display: 'grid', gap: '1.5rem' }}>
+        <div style={{ display: 'grid', gap: '20px' }}>
           
           {/* Contact Info Section - Collapsed if logged in */}
           {!isAuthenticated ? (
@@ -980,7 +980,7 @@ function RequestQuotePage({ user, token, isAuthenticated }) {
                 onChange={(e) => setFormData({...formData, name: e.target.value})}
               />
               
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
                 <InputField
                   label="Email"
                   type="email"
@@ -1106,7 +1106,7 @@ function RequestQuotePage({ user, token, isAuthenticated }) {
             />
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
             <div>
               <label style={{
                 display: 'block',
@@ -1271,7 +1271,7 @@ function CustomerQuoteCard({ quote, token, onUpdate }) {
       background: 'rgba(20, 20, 20, 0.5)',
       border: '1px solid rgba(220, 38, 38, 0.15)',
       borderRadius: '16px',
-      padding: '2rem',
+      padding: '20px',
       backdropFilter: 'blur(10px)'
     }}>
       <div style={{
@@ -1279,7 +1279,7 @@ function CustomerQuoteCard({ quote, token, onUpdate }) {
         justifyContent: 'space-between',
         alignItems: 'start',
         flexWrap: 'wrap',
-        gap: '1rem',
+        gap: '10px',
         marginBottom: '1rem'
       }}>
         <div>
@@ -1368,7 +1368,7 @@ function CustomerQuoteCard({ quote, token, onUpdate }) {
                 alignItems: 'center',
                 marginBottom: '1rem',
                 flexWrap: 'wrap',
-                gap: '1rem'
+                gap: '10px'
               }}>
                 <h4 style={{ color: '#dc2626', fontSize: '1.1rem' }}>Your Quote</h4>
                 <div style={{
@@ -1395,14 +1395,14 @@ function CustomerQuoteCard({ quote, token, onUpdate }) {
               )}
 
               {q.payment_terms && (
-                <div style={{ marginBottom: '1.5rem' }}>
+                <div style={{ marginBottom: '20px' }}>
                   <p style={{ color: '#a3a3a3', fontSize: '0.85rem', marginBottom: '0.25rem' }}>Payment Terms:</p>
                   <p style={{ color: '#f5f5f5' }}>{q.payment_terms}</p>
                 </div>
               )}
 
               {q.status === 'quoted' && (
-                <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
                   <button
                     onClick={() => handleAccept(q.id)}
                     disabled={actionLoading}
@@ -1749,7 +1749,7 @@ function MessageChat({ type, id, token, currentUser }) {
                         ? JSON.parse(msg.attachments || '[]') 
                         : (msg.attachments || []);
                       return parsedAttachments.length > 0 && (
-                        <div style={{ marginTop: '0.5rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                        <div style={{ marginTop: '0.5rem', display: 'flex', flexDirection: 'column', gap: '10px' }}>
                           {parsedAttachments.map((attachment, i) => {
                             // Extract URL - handle both string and object formats
                             const urlString = typeof attachment === 'string' 
@@ -1808,7 +1808,7 @@ function MessageChat({ type, id, token, currentUser }) {
       {imagePreviews.length > 0 && (
         <div style={{
           display: 'flex',
-          gap: '0.5rem',
+          gap: '10px',
           marginBottom: '0.75rem',
           flexWrap: 'wrap'
         }}>
@@ -1862,7 +1862,7 @@ function MessageChat({ type, id, token, currentUser }) {
       )}
 
       {/* Input Area */}
-      <div style={{ display: 'flex', gap: '0.5rem' }}>
+      <div style={{ display: 'flex', gap: '10px' }}>
         <input
           type="file"
           ref={fileInputRef}
@@ -1960,7 +1960,7 @@ function AdminMessages({ token }) {
   }, [selectedConversation, fetchConversations]);
 
   if (isLoading) {
-    return <div style={{ textAlign: 'center', padding: '2rem', color: '#a3a3a3' }}>Loading conversations...</div>;
+    return <div style={{ textAlign: 'center', padding: '20px', color: '#a3a3a3' }}>Loading conversations...</div>;
   }
 
   // Show all conversations - the backend API should only return conversations with messages
@@ -2011,13 +2011,13 @@ function AdminMessages({ token }) {
   }
 
   return (
-    <div style={{ display: 'grid', gap: '1rem' }}>
+    <div style={{ display: 'grid', gap: '10px' }}>
       {activeConversations.length === 0 ? (
         <div style={{
           background: 'rgba(20, 20, 20, 0.5)',
           border: '1px solid rgba(220, 38, 38, 0.15)',
           borderRadius: '16px',
-          padding: '3rem',
+          padding: '20px',
           textAlign: 'center'
         }}>
           <h3 style={{ color: '#f5f5f5', marginBottom: '0.5rem' }}>No Messages Yet</h3>
@@ -2156,8 +2156,8 @@ function LoginPage({ onLoginSuccess, setCurrentPage }) {
   };
 
   return (
-    <div style={{ padding: '4rem 2rem', maxWidth: '500px', margin: '0 auto' }}>
-      <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
+    <div style={{ padding: '60px 2rem', maxWidth: '500px', margin: '0 auto' }}>
+      <div style={{ textAlign: 'center', marginBottom: '30px' }}>
         <h1 style={{
           fontFamily: '"Oswald", sans-serif',
           fontSize: '3rem',
@@ -2177,7 +2177,7 @@ function LoginPage({ onLoginSuccess, setCurrentPage }) {
           border: '1px solid rgba(239, 68, 68, 0.3)',
           borderRadius: '12px',
           padding: '1rem',
-          marginBottom: '1.5rem',
+          marginBottom: '20px',
           color: '#ef4444',
           textAlign: 'center'
         }}>
@@ -2189,10 +2189,10 @@ function LoginPage({ onLoginSuccess, setCurrentPage }) {
         background: 'rgba(20, 20, 20, 0.5)',
         border: '1px solid rgba(220, 38, 38, 0.15)',
         borderRadius: '24px',
-        padding: '3rem',
+        padding: '20px',
         backdropFilter: 'blur(10px)'
       }}>
-        <div style={{ marginBottom: '1.5rem' }}>
+        <div style={{ marginBottom: '20px' }}>
           <label style={{ display: 'block', marginBottom: '0.5rem', color: '#f5f5f5', fontWeight: 500 }}>
             Email
           </label>
@@ -2214,7 +2214,7 @@ function LoginPage({ onLoginSuccess, setCurrentPage }) {
           />
         </div>
 
-        <div style={{ marginBottom: '2rem' }}>
+        <div style={{ marginBottom: '20px' }}>
           <label style={{ display: 'block', marginBottom: '0.5rem', color: '#f5f5f5', fontWeight: 500 }}>
             Password
           </label>
@@ -2365,8 +2365,8 @@ function RegisterPage({ onRegisterSuccess, setCurrentPage }) {
   };
 
   return (
-    <div style={{ padding: '4rem 2rem', maxWidth: '600px', margin: '0 auto' }}>
-      <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
+    <div style={{ padding: '60px 2rem', maxWidth: '600px', margin: '0 auto' }}>
+      <div style={{ textAlign: 'center', marginBottom: '20px' }}>
         <h1 style={{
           fontFamily: '"Oswald", sans-serif',
           fontSize: '2.5rem',
@@ -2386,7 +2386,7 @@ function RegisterPage({ onRegisterSuccess, setCurrentPage }) {
           border: '1px solid rgba(239, 68, 68, 0.3)',
           borderRadius: '12px',
           padding: '1rem',
-          marginBottom: '1.5rem',
+          marginBottom: '20px',
           color: '#ef4444',
           textAlign: 'center'
         }}>
@@ -2398,10 +2398,10 @@ function RegisterPage({ onRegisterSuccess, setCurrentPage }) {
         background: 'rgba(20, 20, 20, 0.5)',
         border: '1px solid rgba(220, 38, 38, 0.15)',
         borderRadius: '24px',
-        padding: '2rem',
+        padding: '20px',
         backdropFilter: 'blur(10px)'
       }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '1rem' }}>
           <div>
             <label style={labelStyle}>First Name *</label>
             <input
@@ -2460,7 +2460,7 @@ function RegisterPage({ onRegisterSuccess, setCurrentPage }) {
           />
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: '10px', marginBottom: '1rem' }}>
           <div>
             <label style={labelStyle}>City</label>
             <input
@@ -2493,7 +2493,7 @@ function RegisterPage({ onRegisterSuccess, setCurrentPage }) {
           </div>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '20px' }}>
           <div>
             <label style={labelStyle}>Password *</label>
             <input
@@ -2699,8 +2699,8 @@ function ForgotPasswordPage({ setCurrentPage }) {
   };
 
   return (
-    <div style={{ padding: '4rem 2rem', maxWidth: '500px', margin: '0 auto' }}>
-      <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
+    <div style={{ padding: '60px 2rem', maxWidth: '500px', margin: '0 auto' }}>
+      <div style={{ textAlign: 'center', marginBottom: '20px' }}>
         <h1 style={{
           fontFamily: '"Oswald", sans-serif',
           fontSize: '2.5rem',
@@ -2722,8 +2722,8 @@ function ForgotPasswordPage({ setCurrentPage }) {
       <div style={{ 
         display: 'flex', 
         justifyContent: 'center', 
-        gap: '0.5rem', 
-        marginBottom: '2rem' 
+        gap: '10px', 
+        marginBottom: '20px' 
       }}>
         {[1, 2, 3].map(s => (
           <div
@@ -2744,7 +2744,7 @@ function ForgotPasswordPage({ setCurrentPage }) {
           border: '1px solid rgba(239, 68, 68, 0.3)',
           borderRadius: '12px',
           padding: '1rem',
-          marginBottom: '1.5rem',
+          marginBottom: '20px',
           color: '#ef4444',
           textAlign: 'center'
         }}>
@@ -2758,7 +2758,7 @@ function ForgotPasswordPage({ setCurrentPage }) {
           border: '1px solid rgba(220, 38, 38, 0.3)',
           borderRadius: '12px',
           padding: '1rem',
-          marginBottom: '1.5rem',
+          marginBottom: '20px',
           color: '#dc2626',
           textAlign: 'center'
         }}>
@@ -2770,13 +2770,13 @@ function ForgotPasswordPage({ setCurrentPage }) {
         background: 'rgba(20, 20, 20, 0.5)',
         border: '1px solid rgba(220, 38, 38, 0.15)',
         borderRadius: '24px',
-        padding: '2rem',
+        padding: '20px',
         backdropFilter: 'blur(10px)'
       }}>
         {/* Step 1: Enter Email */}
         {step === 1 && (
           <form onSubmit={handleRequestCode}>
-            <div style={{ marginBottom: '1.5rem' }}>
+            <div style={{ marginBottom: '20px' }}>
               <label style={{ display: 'block', marginBottom: '0.5rem', color: '#f5f5f5', fontWeight: 500 }}>
                 Email Address
               </label>
@@ -2812,7 +2812,7 @@ function ForgotPasswordPage({ setCurrentPage }) {
         {/* Step 2: Enter Code */}
         {step === 2 && (
           <form onSubmit={handleVerifyCode}>
-            <div style={{ marginBottom: '1.5rem' }}>
+            <div style={{ marginBottom: '20px' }}>
               <label style={{ display: 'block', marginBottom: '0.5rem', color: '#f5f5f5', fontWeight: 500 }}>
                 6-Digit Reset Code
               </label>
@@ -2865,7 +2865,7 @@ function ForgotPasswordPage({ setCurrentPage }) {
                 style={inputStyle}
               />
             </div>
-            <div style={{ marginBottom: '1.5rem' }}>
+            <div style={{ marginBottom: '20px' }}>
               <label style={{ display: 'block', marginBottom: '0.5rem', color: '#f5f5f5', fontWeight: 500 }}>
                 Confirm New Password
               </label>
@@ -3027,15 +3027,15 @@ function AdminDashboard({ user, token, onLogout }) {
   };
 
   return (
-    <div style={{ padding: '2rem', maxWidth: '1400px', margin: '0 auto' }}>
+    <div style={{ padding: '20px', maxWidth: '1400px', margin: '0 auto' }}>
       {/* Header */}
       <div style={{ 
         display: 'flex', 
         justifyContent: 'space-between', 
         alignItems: 'center',
-        marginBottom: '2rem',
+        marginBottom: '20px',
         flexWrap: 'wrap',
-        gap: '1rem'
+        gap: '10px'
       }}>
         <div>
           <h1 style={{
@@ -3050,7 +3050,7 @@ function AdminDashboard({ user, token, onLogout }) {
             Welcome back, {user?.first_name || 'Admin'}! Manage quotes and projects.
           </p>
         </div>
-        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
           <span style={{
             padding: '0.5rem 1rem',
             background: 'rgba(255, 255, 255, 0.1)',
@@ -3084,8 +3084,8 @@ function AdminDashboard({ user, token, onLogout }) {
       <div style={{
         display: 'grid',
         gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-        gap: '1.5rem',
-        marginBottom: '2rem'
+        gap: '20px',
+        marginBottom: '20px'
       }}>
         <div style={{
           background: 'rgba(251, 191, 36, 0.1)',
@@ -3140,8 +3140,8 @@ function AdminDashboard({ user, token, onLogout }) {
       {/* Tabs */}
       <div style={{
         display: 'flex',
-        gap: '1rem',
-        marginBottom: '2rem',
+        gap: '10px',
+        marginBottom: '20px',
         borderBottom: '1px solid rgba(220, 38, 38, 0.15)',
         flexWrap: 'wrap'
       }}>
@@ -3175,13 +3175,13 @@ function AdminDashboard({ user, token, onLogout }) {
 
 {/* Quotes Tab */}
       {!isLoading && activeTab === 'quotes' && (
-        <div style={{ display: 'grid', gap: '1.5rem' }}>
+        <div style={{ display: 'grid', gap: '20px' }}>
           {quotes.length === 0 ? (
             <div style={{
               background: 'rgba(20, 20, 20, 0.5)',
               border: '1px solid rgba(220, 38, 38, 0.15)',
               borderRadius: '16px',
-              padding: '3rem',
+              padding: '20px',
               textAlign: 'center'
             }}>
               <h3 style={{ color: '#f5f5f5', marginBottom: '0.5rem' }}>No Quote Requests Yet</h3>
@@ -3195,7 +3195,7 @@ function AdminDashboard({ user, token, onLogout }) {
                   background: 'rgba(20, 20, 20, 0.5)',
                   border: '1px solid rgba(220, 38, 38, 0.15)',
                   borderRadius: '16px',
-                  padding: '2rem',
+                  padding: '20px',
                   backdropFilter: 'blur(10px)'
                 }}
               >
@@ -3203,9 +3203,9 @@ function AdminDashboard({ user, token, onLogout }) {
                   display: 'flex',
                   justifyContent: 'space-between',
                   alignItems: 'start',
-                  marginBottom: '1.5rem',
+                  marginBottom: '20px',
                   flexWrap: 'wrap',
-                  gap: '1rem'
+                  gap: '10px'
                 }}>
                   <div>
                     <h3 style={{
@@ -3239,12 +3239,12 @@ function AdminDashboard({ user, token, onLogout }) {
                   background: 'rgba(10, 10, 10, 0.5)',
                   borderRadius: '12px',
                   padding: '1.25rem',
-                  marginBottom: '1.5rem'
+                  marginBottom: '20px'
                 }}>
                   <h4 style={{ color: '#dc2626', marginBottom: '0.75rem', fontSize: '0.9rem', fontWeight: '600' }}>
                     CUSTOMER INFO
                   </h4>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.75rem' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '10px' }}>
                     <p style={{ color: '#d4d4d4' }}>
                       <strong style={{ color: '#a3a3a3' }}>Name:</strong> {quote.first_name} {quote.last_name}
                     </p>
@@ -3265,7 +3265,7 @@ function AdminDashboard({ user, token, onLogout }) {
                   background: 'rgba(10, 10, 10, 0.5)',
                   borderRadius: '12px',
                   padding: '1.25rem',
-                  marginBottom: '1.5rem'
+                  marginBottom: '20px'
                 }}>
                   <h4 style={{ color: '#dc2626', marginBottom: '0.75rem', fontSize: '0.9rem', fontWeight: '600' }}>
                     PROJECT DETAILS
@@ -3274,7 +3274,7 @@ function AdminDashboard({ user, token, onLogout }) {
                     <strong style={{ color: '#a3a3a3' }}>Description:</strong><br />
                     {quote.description}
                   </p>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '0.75rem' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '10px' }}>
                     <p style={{ color: '#d4d4d4' }}>
                       <strong style={{ color: '#a3a3a3' }}>Urgency:</strong> {quote.urgency}
                     </p>
@@ -3295,7 +3295,7 @@ function AdminDashboard({ user, token, onLogout }) {
                         padding: '1.5rem'
                       }}>
                         <h4 style={{ color: '#dc2626', marginBottom: '1rem' }}>Send Quote to Customer</h4>
-                        <div style={{ display: 'grid', gap: '1rem' }}>
+                        <div style={{ display: 'grid', gap: '10px' }}>
                           <div>
                             <label style={{ display: 'block', color: '#d4d4d4', marginBottom: '0.5rem' }}>
                               Quote Amount ($)
@@ -3357,7 +3357,7 @@ function AdminDashboard({ user, token, onLogout }) {
                               }}
                             />
                           </div>
-                          <div style={{ display: 'flex', gap: '1rem' }}>
+                          <div style={{ display: 'flex', gap: '10px' }}>
                             <button
                               onClick={() => handleSendQuote(quote.id)}
                               style={{
@@ -3464,7 +3464,7 @@ function AdminDashboard({ user, token, onLogout }) {
           background: 'rgba(20, 20, 20, 0.5)',
           border: '1px solid rgba(220, 38, 38, 0.15)',
           borderRadius: '16px',
-          padding: '3rem',
+          padding: '20px',
           textAlign: 'center'
         }}>
           <h3 style={{ color: '#f5f5f5', marginBottom: '0.5rem' }}>Customer Management Coming Soon</h3>
@@ -3515,7 +3515,7 @@ function CustomerProjectsTab({ projects, token }) {
         background: 'rgba(20, 20, 20, 0.5)',
         border: '1px solid rgba(220, 38, 38, 0.15)',
         borderRadius: '16px',
-        padding: '3rem',
+        padding: '20px',
         textAlign: 'center',
         backdropFilter: 'blur(10px)'
       }}>
@@ -3530,7 +3530,7 @@ function CustomerProjectsTab({ projects, token }) {
   }
 
   return (
-    <div style={{ display: 'grid', gap: '1.5rem' }}>
+    <div style={{ display: 'grid', gap: '20px' }}>
       {sortedProjects.map(project => {
         const isExpanded = expandedProjects[project.id];
         
@@ -3541,7 +3541,7 @@ function CustomerProjectsTab({ projects, token }) {
               background: 'rgba(20, 20, 20, 0.5)',
               border: '1px solid rgba(220, 38, 38, 0.15)',
               borderRadius: '16px',
-              padding: '2rem',
+              padding: '20px',
               backdropFilter: 'blur(10px)'
             }}
           >
@@ -3557,7 +3557,7 @@ function CustomerProjectsTab({ projects, token }) {
                 justifyContent: 'space-between',
                 alignItems: 'start',
                 flexWrap: 'wrap',
-                gap: '1rem'
+                gap: '10px'
               }}>
                 <div style={{ flex: 1 }}>
                   <h3 style={{
@@ -3579,7 +3579,7 @@ function CustomerProjectsTab({ projects, token }) {
                     </p>
                   )}
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                   <div style={{
                     padding: '0.5rem 1rem',
                     borderRadius: '8px',
@@ -3650,7 +3650,7 @@ function CustomerProjectsTab({ projects, token }) {
             {isExpanded && (
               <div style={{ marginTop: '1.5rem', paddingTop: '1.5rem', borderTop: '1px solid rgba(220, 38, 38, 0.1)' }}>
                 {project.description && (
-                  <div style={{ marginBottom: '1.5rem' }}>
+                  <div style={{ marginBottom: '20px' }}>
                     <h4 style={{ 
                       color: '#dc2626', 
                       marginBottom: '0.5rem',
@@ -3666,7 +3666,7 @@ function CustomerProjectsTab({ projects, token }) {
                 )}
 
                 {project.scope_of_work && (
-                  <div style={{ marginBottom: '1.5rem' }}>
+                  <div style={{ marginBottom: '20px' }}>
                     <h4 style={{ 
                       color: '#dc2626', 
                       marginBottom: '0.5rem',
@@ -3762,7 +3762,7 @@ function CustomerMessagesTab({ messages, quotes, projects, token }) {
         background: 'rgba(20, 20, 20, 0.5)',
         border: '1px solid rgba(220, 38, 38, 0.15)',
         borderRadius: '16px',
-        padding: '3rem',
+        padding: '20px',
         textAlign: 'center',
         backdropFilter: 'blur(10px)'
       }}>
@@ -3777,7 +3777,7 @@ function CustomerMessagesTab({ messages, quotes, projects, token }) {
   }
 
   return (
-    <div style={{ display: 'grid', gap: '1rem' }}>
+    <div style={{ display: 'grid', gap: '10px' }}>
       {Object.entries(groupedMessages).map(([threadKey, thread]) => {
         const isExpanded = expandedThreads[threadKey];
         const latestMessage = thread.messages[thread.messages.length - 1];
@@ -3893,15 +3893,15 @@ function CustomerPortal({ user, token, onLogout }) {
   }, [token]);
 
   return (
-    <div style={{ padding: '2rem', maxWidth: '1400px', margin: '0 auto' }}>
+    <div style={{ padding: '20px', maxWidth: '1400px', margin: '0 auto' }}>
       {/* Header with Logout */}
       <div style={{ 
         display: 'flex', 
         justifyContent: 'space-between', 
         alignItems: 'center',
-        marginBottom: '2rem',
+        marginBottom: '20px',
         flexWrap: 'wrap',
-        gap: '1rem'
+        gap: '10px'
       }}>
         <div>
           <h1 style={{
@@ -3937,8 +3937,8 @@ function CustomerPortal({ user, token, onLogout }) {
       {/* Tabs */}
       <div style={{
         display: 'flex',
-        gap: '1rem',
-        marginBottom: '2rem',
+        gap: '10px',
+        marginBottom: '20px',
         borderBottom: '1px solid rgba(220, 38, 38, 0.15)',
         flexWrap: 'wrap'
       }}>
@@ -3979,13 +3979,13 @@ function CustomerPortal({ user, token, onLogout }) {
 
     {/* Quotes Tab */}
       {!isLoading && activeTab === 'quotes' && (
-        <div style={{ display: 'grid', gap: '1.5rem' }}>
+        <div style={{ display: 'grid', gap: '20px' }}>
           {quotes.length === 0 ? (
             <div style={{
               background: 'rgba(20, 20, 20, 0.5)',
               border: '1px solid rgba(220, 38, 38, 0.15)',
               borderRadius: '16px',
-              padding: '3rem',
+              padding: '20px',
               textAlign: 'center',
               backdropFilter: 'blur(10px)'
             }}>
@@ -4035,8 +4035,8 @@ function CustomerPortal({ user, token, onLogout }) {
 // About Page
 function AboutPage() {
   return (
-    <div style={{ padding: '4rem 2rem', maxWidth: '1200px', margin: '0 auto' }}>
-      <div style={{ textAlign: 'center', marginBottom: '4rem' }}>
+    <div style={{ padding: '60px 2rem', maxWidth: '1200px', margin: '0 auto' }}>
+      <div style={{ textAlign: 'center', marginBottom: '40px' }}>
         <h1 className="animate-in" style={{
           fontFamily: '"Oswald", sans-serif',
           fontSize: 'clamp(2.5rem, 5vw, 3.5rem)',
@@ -4064,8 +4064,8 @@ function AboutPage() {
       <div style={{
         display: 'grid',
         gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
-        gap: '2rem',
-        marginBottom: '4rem'
+        gap: '20px',
+        marginBottom: '40px'
       }}>
         {[
           { number: '10K+', label: 'Projects Completed' },
@@ -4080,7 +4080,7 @@ function AboutPage() {
               background: 'rgba(20, 20, 20, 0.5)',
               border: '1px solid rgba(220, 38, 38, 0.15)',
               borderRadius: '16px',
-              padding: '2.5rem',
+              padding: '20px',
               textAlign: 'center',
               backdropFilter: 'blur(10px)',
               animationDelay: `${0.1 * i}s`,
@@ -4107,13 +4107,13 @@ function AboutPage() {
         background: 'rgba(220, 38, 38, 0.05)',
         border: '1px solid rgba(220, 38, 38, 0.2)',
         borderRadius: '20px',
-        padding: '3rem',
+        padding: '20px',
         textAlign: 'center'
       }}>
         <h2 style={{
           fontFamily: '"Oswald", sans-serif',
           fontSize: '2rem',
-          marginBottom: '1.5rem',
+          marginBottom: '20px',
           color: '#f5f5f5'
         }}>
           Get in Touch
@@ -4121,25 +4121,25 @@ function AboutPage() {
         <div style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
-          gap: '2rem',
+          gap: '20px',
           maxWidth: '900px',
           margin: '0 auto'
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', justifyContent: 'center' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', justifyContent: 'center' }}>
             <Phone size={24} color="#dc2626" />
             <div>
               <div style={{ color: '#a3a3a3', fontSize: '0.9rem' }}>Phone</div>
               <div style={{ color: '#f5f5f5', fontWeight: '600' }}>203-350-2014</div>
             </div>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', justifyContent: 'center' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', justifyContent: 'center' }}>
             <Mail size={24} color="#dc2626" />
             <div>
               <div style={{ color: '#a3a3a3', fontSize: '0.9rem' }}>Email</div>
               <div style={{ color: '#f5f5f5', fontWeight: '600' }}>info@greenwichpropertycare.com</div>
             </div>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', justifyContent: 'center' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', justifyContent: 'center' }}>
             <Clock size={24} color="#dc2626" />
             <div>
               <div style={{ color: '#a3a3a3', fontSize: '0.9rem' }}>Hours</div>
@@ -4158,8 +4158,8 @@ function Footer({ setCurrentPage }) {
     <footer style={{
       background: 'rgba(10, 10, 10, 0.95)',
       borderTop: '1px solid rgba(220, 38, 38, 0.15)',
-      padding: '3rem 2rem 2rem',
-      marginTop: '6rem',
+      padding: '60px 2rem 40px',
+      marginTop: '60px',
       position: 'relative',
       zIndex: 1
     }}>
@@ -4169,7 +4169,7 @@ function Footer({ setCurrentPage }) {
         display: 'grid',
         gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
         gap: '3rem',
-        marginBottom: '3rem'
+        marginBottom: '30px'
       }}>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
           <img
@@ -4186,7 +4186,7 @@ function Footer({ setCurrentPage }) {
           <h4 style={{ color: '#f5f5f5', marginBottom: '1rem', fontSize: '1.1rem', fontWeight: '600' }}>
             Quick Links
           </h4>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
             {['Services', 'Request Quote', 'About', 'Portal'].map(link => (
               <button
                 key={link}
@@ -4222,7 +4222,7 @@ function Footer({ setCurrentPage }) {
   <div style={{ 
     display: 'flex', 
     flexDirection: 'column', 
-    gap: '0.75rem', 
+    gap: '10px', 
     color: '#a3a3a3', 
     fontSize: '0.95rem' 
   }}>
