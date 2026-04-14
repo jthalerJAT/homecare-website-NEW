@@ -1453,7 +1453,7 @@ function AdminDashboard({ user, token, onLogout }) {
       {isLoading && <div style={{ textAlign: 'center', padding: '4rem', color: COLORS.textMuted }}>Loading...</div>}
  
       {!isLoading && activeTab === 'todays-jobs' && <AdminTodaysJobs jobs={todaysJobs} token={token} user={user} onRefresh={fetchData} />}
-      {!isLoading && activeTab === 'quotes' && <AdminQuotesTab quotes={quotes} token={token} onRefresh={fetchData} />}
+      {!isLoading && activeTab === 'quotes' && <AdminQuotesTab quotes={quotes} token={token} onRefresh={fetchData} user={user} />}
       {!isLoading && activeTab === 'projects' && <AdminProjectsTab projects={projects} token={token} user={user} onRefresh={fetchData} />}
       {!isLoading && activeTab === 'search' && <AdminSearchTab token={token} user={user} />}
       {!isLoading && activeTab === 'reps' && <AdminRepsTab token={token} onRefresh={fetchData} />}
@@ -1575,7 +1575,7 @@ function AdminJobExpanded({ job, token, user, onRefresh }) {
 // ============================================
 // ADMIN: QUOTES TAB
 // ============================================
-function AdminQuotesTab({ quotes, token, onRefresh }) {
+function AdminQuotesTab({ quotes, token, onRefresh, user }) {
   const [selectedQuote, setSelectedQuote] = useState(null);
   const [quoteForm, setQuoteForm] = useState({ amount: '', duration: '', scope: '', proposedStartDate: '', proposedWorkTime: '' });
   const [showConfirmDelete, setShowConfirmDelete] = useState(null);
