@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Calendar, CheckCircle, DollarSign, Menu, X, ArrowRight, Star, Phone, Mail, Clock, Plus, Send, ChevronDown, ChevronUp, Search, User, Settings, FileText, Briefcase, MessageSquare, Users, Trash2, Edit, AlertCircle } from 'lucide-react';
+import { Calendar, CheckCircle, DollarSign, Menu, X, ArrowRight, Phone, Mail, Clock, Plus, Send, ChevronDown, ChevronUp, Search, Settings, FileText, Briefcase, MessageSquare, Trash2, AlertCircle } from 'lucide-react';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
  
@@ -685,7 +685,6 @@ function CustomerPortal({ user, token, onLogout, setCurrentPage, refreshUser }) 
 // ============================================
 function OpenQuotesTab({ quotes, token, user, onRefresh }) {
   const [expandedId, setExpandedId] = useState(null);
-  const [showPayment, setShowPayment] = useState(null);
  
   const handleAccept = async (quoteId) => {
     if (!window.confirm('Accept this quote? A 20% deposit will be required to activate the job.')) return;
