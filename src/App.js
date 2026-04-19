@@ -1591,7 +1591,8 @@ function AdminDashboard({ user, token, onLogout }) {
   const [projects, setProjects] = useState([]);
   const [todaysJobs, setTodaysJobs] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
- 
+  const [showNewChangeOrder, setShowNewChangeOrder] = useState(false);
+
   const fetchData = useCallback(async () => {
     setIsLoading(true);
     try {
@@ -1604,7 +1605,7 @@ function AdminDashboard({ user, token, onLogout }) {
     } catch (e) { console.error('Error fetching admin data:', e); }
     finally { setIsLoading(false); }
   }, [token]);
- 
+
   useEffect(() => { fetchData(); }, [fetchData]);
  
   const tabs = [
@@ -1623,11 +1624,18 @@ function AdminDashboard({ user, token, onLogout }) {
           <h1 style={{ fontFamily: '"Oswald", sans-serif', fontSize: '2.2rem', color: COLORS.text }}>Admin Dashboard</h1>
           <p style={{ color: COLORS.textMuted }}>Welcome, {user?.first_name}!</p>
         </div>
-        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+          <button onClick={() => setShowNewChangeOrder(true)} style={{ ...btnPrimary, padding: '8px 16px', fontSize: '0.9rem' }}>
+            <Plus size={14} style={{ marginRight: '4px' }} /> New Change Order
+          </button>
           <span style={{ padding: '0.4rem 0.8rem', background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.3)', borderRadius: '8px', color: COLORS.redLight, fontSize: '0.85rem', fontWeight: 600 }}>ADMIN</span>
           <button onClick={onLogout} style={btnSecondary}>Logout</button>
         </div>
       </div>
+
+      {showNewChangeOrder && (
+        <AdminStandaloneChangeOrder token={token} projects={projects} onClose={() => setShowNewChangeOrder(false)} onCreated={fetchData} />
+      )}
  
       {/* Stats */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '15px', marginBottom: '20px' }}>
@@ -1707,7 +1715,25 @@ function AdminJobExpanded({ job, token, user, onRefresh }) {
   const [coDescription, setCoDescription] = useState('');
   const [coAmount, setCoAmount] = useState('');
   const [showConfirmDelete, setShowConfirmDelete] = useState(false);
- 
+
+  // Rep assignment state
+  const [showRepAssign, setShowRepAssign] = useState(false);
+  const [assignedReps, setAssignedReps] = useState([]);
+  const [availableReps, setAvailableReps] = useState([]);
+  const [repFilter, setRepFilter] = useState('');
+  const [confirmRemoveRep, setConfirmRemoveRep] = useState(null);
+
+  const loadReps = useCallback(async () => {
+    const [assigned, all] = await Promise.all([
+      api.adminGetProjectReps(job.id, token),
+      api.adminGetReps(token),
+    ]);
+    setAssignedReps(assigned.reps || []);
+    setAvailableReps(all.reps || []);
+  }, [job.id, token]);
+
+  useEffect(() => { if (showRepAssign) loadReps(); }, [showRepAssign, loadReps]);
+
   const handleCreateChangeOrder = async () => {
     if (!coDescription || !coAmount) { alert('Description and amount required'); return; }
     await api.adminCreateChangeOrder({ projectId: job.id, description: coDescription, amount: parseFloat(coAmount) }, token);
@@ -1715,26 +1741,54 @@ function AdminJobExpanded({ job, token, user, onRefresh }) {
     alert('Change order created and customer notified.');
     onRefresh();
   };
- 
+
   const handleMarkComplete = async () => {
     if (!window.confirm('Mark this job as complete? The customer will be notified.')) return;
     await api.adminMarkComplete(job.id, token);
     alert('Job marked complete. Customer notified.');
     onRefresh();
   };
- 
+
   const handleDelete = async () => {
     await api.adminDeleteProject(job.id, token);
     setShowConfirmDelete(false);
     onRefresh();
   };
- 
+
+  const handleAssignRep = async (repId) => {
+    if (!repId) return;
+    const r = await api.adminAssignRep(job.id, repId, token);
+    if (r.error) { alert(r.error); return; }
+    setRepFilter('');
+    loadReps();
+    onRefresh();
+  };
+
+  const handleRemoveRep = async (assignmentId) => {
+    await api.adminRemoveRepAssignment(assignmentId, token);
+    setConfirmRemoveRep(null);
+    loadReps();
+    onRefresh();
+  };
+
+  const assignedRepIds = new Set(assignedReps.map(r => r.rep_id || r.id));
+  const filteredAvailable = availableReps
+    .filter(r => !assignedRepIds.has(r.id))
+    .filter(r => {
+      if (!repFilter) return true;
+      const q = repFilter.toLowerCase();
+      return `${r.first_name} ${r.last_name}`.toLowerCase().includes(q) || (r.trade || '').toLowerCase().includes(q);
+    });
+
   return (
     <div style={{ ...cardStyle, marginTop: '5px', borderColor: COLORS.red }}>
       {/* Action buttons */}
       <div style={{ display: 'flex', gap: '10px', marginBottom: '15px', flexWrap: 'wrap' }}>
         <button onClick={() => setShowChangeOrder(!showChangeOrder)} style={{ ...btnPrimary, padding: '8px 16px', fontSize: '0.9rem' }}>
           <Plus size={14} style={{ marginRight: '4px' }} /> New Change Order
+        </button>
+        <button onClick={() => setShowRepAssign(!showRepAssign)} style={{ ...btnSecondary, padding: '8px 16px', fontSize: '0.9rem' }}>
+          <Briefcase size={14} style={{ marginRight: '4px' }} /> Change Rep Assignment
         </button>
         {job.status !== 'complete' && (
           <button onClick={handleMarkComplete} style={{ ...btnSecondary, padding: '8px 16px', fontSize: '0.9rem', borderColor: 'rgba(34,197,94,0.3)', color: COLORS.green }}>
@@ -1745,13 +1799,17 @@ function AdminJobExpanded({ job, token, user, onRefresh }) {
           <Trash2 size={14} style={{ marginRight: '4px' }} /> Delete
         </button>
       </div>
- 
+
       {showConfirmDelete && <ConfirmDialog message="Are you sure you want to delete this job?" onConfirm={handleDelete} onCancel={() => setShowConfirmDelete(false)} />}
- 
+      {confirmRemoveRep && <ConfirmDialog message="Are you sure you want to remove this rep?" onConfirm={() => handleRemoveRep(confirmRemoveRep)} onCancel={() => setConfirmRemoveRep(null)} />}
+
       {/* Change Order Form */}
       {showChangeOrder && (
         <div style={{ background: 'rgba(10,10,10,0.5)', borderRadius: '10px', padding: '15px', marginBottom: '15px', border: `1px solid ${COLORS.borderRed}` }}>
           <h4 style={{ color: COLORS.red, marginBottom: '10px' }}>Create Change Order</h4>
+          <div style={{ marginBottom: '10px', padding: '8px 10px', background: 'rgba(255,255,255,0.04)', borderRadius: '6px', color: COLORS.textMuted, fontSize: '0.85rem' }}>
+            Customer: <strong style={{ color: COLORS.text }}>{job.first_name} {job.last_name}</strong> &middot; {job.email}
+          </div>
           <div style={{ marginBottom: '10px' }}><label style={labelStyle}>Description</label><textarea value={coDescription} onChange={(e) => setCoDescription(e.target.value)} rows={3} style={{ ...inputStyle, resize: 'vertical' }} /></div>
           <div style={{ marginBottom: '10px' }}><label style={labelStyle}>Amount ($)</label><input type="number" step="0.01" value={coAmount} onChange={(e) => setCoAmount(e.target.value)} style={inputStyle} /></div>
           <div style={{ display: 'flex', gap: '10px' }}>
@@ -1760,7 +1818,54 @@ function AdminJobExpanded({ job, token, user, onRefresh }) {
           </div>
         </div>
       )}
- 
+
+      {/* Rep Assignment */}
+      {showRepAssign && (
+        <div style={{ background: 'rgba(10,10,10,0.5)', borderRadius: '10px', padding: '15px', marginBottom: '15px', border: `1px solid ${COLORS.borderRed}` }}>
+          <h4 style={{ color: COLORS.red, marginBottom: '10px' }}>Reps Assigned to this Job</h4>
+          {assignedReps.length === 0 ? (
+            <p style={{ color: COLORS.textMuted, fontStyle: 'italic', marginBottom: '12px' }}>No reps assigned yet.</p>
+          ) : (
+            <div style={{ display: 'grid', gap: '8px', marginBottom: '15px' }}>
+              {assignedReps.map(r => (
+                <div key={r.assignment_id || r.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', background: 'rgba(255,255,255,0.04)', borderRadius: '8px' }}>
+                  <div>
+                    <span style={{ color: COLORS.text, fontWeight: 600 }}>{r.first_name} {r.last_name}</span>
+                    <span style={{ color: COLORS.textMuted, marginLeft: '10px', fontSize: '0.85rem' }}>{r.trade || 'No trade'} &middot; {r.phone || 'no phone'} &middot; {r.email}</span>
+                  </div>
+                  <button onClick={() => setConfirmRemoveRep(r.assignment_id || r.id)} style={{ ...btnSecondary, padding: '6px 12px', fontSize: '0.85rem', borderColor: 'rgba(239,68,68,0.3)', color: COLORS.redLight }}>
+                    <Trash2 size={14} /> Remove Rep
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <label style={labelStyle}>Add a Rep</label>
+          <input
+            type="text"
+            value={repFilter}
+            onChange={(e) => setRepFilter(e.target.value)}
+            placeholder="Type to filter by name or trade..."
+            style={{ ...inputStyle, marginBottom: '8px' }}
+          />
+          {filteredAvailable.length === 0 ? (
+            <p style={{ color: COLORS.textMuted, fontStyle: 'italic', fontSize: '0.85rem' }}>
+              {availableReps.length === 0 ? 'No reps in roster yet.' : 'No matching reps available.'}
+            </p>
+          ) : (
+            <div style={{ display: 'grid', gap: '6px', maxHeight: '200px', overflowY: 'auto' }}>
+              {filteredAvailable.map(r => (
+                <button key={r.id} onClick={() => handleAssignRep(r.id)} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', background: 'rgba(255,255,255,0.04)', border: `1px solid ${COLORS.border}`, borderRadius: '6px', color: COLORS.text, cursor: 'pointer', textAlign: 'left' }}>
+                  <span><strong>{r.first_name} {r.last_name}</strong> — {r.trade || 'No trade'}</span>
+                  <span style={{ color: COLORS.green, fontSize: '0.85rem' }}>+ Confirm Rep Assignment</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Job Details */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '8px', marginBottom: '15px' }}>
         <p style={{ color: COLORS.textLight }}><strong style={{ color: COLORS.textMuted }}>Customer:</strong> {job.first_name} {job.last_name}</p>
@@ -1769,13 +1874,109 @@ function AdminJobExpanded({ job, token, user, onRefresh }) {
         <p style={{ color: COLORS.textLight }}><strong style={{ color: COLORS.textMuted }}>Amount:</strong> ${parseFloat(job.total_amount || 0).toFixed(2)}</p>
         <p style={{ color: COLORS.textLight }}><strong style={{ color: COLORS.textMuted }}>Status:</strong> <StatusBadge status={job.status} /></p>
       </div>
- 
+
       {/* Messaging */}
       <MessageChat type="project" id={job.id} token={token} currentUser={user} />
     </div>
   );
 }
- 
+
+// ============================================
+// ADMIN: STANDALONE CHANGE ORDER (Choose Customer → Project → Submit)
+// ============================================
+function AdminStandaloneChangeOrder({ token, projects, onClose, onCreated }) {
+  const [customers, setCustomers] = useState([]);
+  const [customerFilter, setCustomerFilter] = useState('');
+  const [selectedCustomerId, setSelectedCustomerId] = useState(null);
+  const [selectedProjectId, setSelectedProjectId] = useState('');
+  const [description, setDescription] = useState('');
+  const [amount, setAmount] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    api.adminGetCustomers(token).then(r => setCustomers(r.customers || []));
+  }, [token]);
+
+  const filteredCustomers = !customerFilter ? customers :
+    customers.filter(c => `${c.first_name} ${c.last_name} ${c.email}`.toLowerCase().includes(customerFilter.toLowerCase()));
+
+  const selectedCustomer = customers.find(c => c.id === selectedCustomerId);
+  const customerProjects = projects.filter(p => p.customer_id === selectedCustomerId && ['pending', 'in_progress', 'complete'].includes(p.status));
+
+  const handleSubmit = async () => {
+    if (!selectedProjectId || !description || !amount) { alert('Choose a project, then enter description and amount.'); return; }
+    setIsLoading(true);
+    try {
+      const r = await api.adminCreateChangeOrder({ projectId: parseInt(selectedProjectId, 10), description, amount: parseFloat(amount) }, token);
+      if (r.changeOrder) { alert('Change order created and customer notified.'); onCreated(); onClose(); }
+      else { alert(r.error || 'Failed to create change order'); }
+    } catch (e) { alert('Failed to create change order'); }
+    finally { setIsLoading(false); }
+  };
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px' }}>
+      <div style={{ ...cardStyle, maxWidth: '600px', width: '100%', maxHeight: '90vh', overflowY: 'auto', borderColor: COLORS.red }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+          <h3 style={{ color: COLORS.red, fontFamily: '"Oswald", sans-serif' }}>Create Change Order</h3>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', color: COLORS.textMuted, cursor: 'pointer' }}><X size={20} /></button>
+        </div>
+
+        {!selectedCustomer ? (
+          <>
+            <label style={labelStyle}>Choose Customer</label>
+            <input
+              type="text"
+              value={customerFilter}
+              onChange={(e) => setCustomerFilter(e.target.value)}
+              placeholder="Type to filter by name or email..."
+              style={{ ...inputStyle, marginBottom: '8px' }}
+              autoFocus
+            />
+            <div style={{ display: 'grid', gap: '6px', maxHeight: '300px', overflowY: 'auto' }}>
+              {filteredCustomers.length === 0 ? (
+                <p style={{ color: COLORS.textMuted, fontStyle: 'italic', textAlign: 'center', padding: '20px' }}>No customers match.</p>
+              ) : filteredCustomers.map(c => (
+                <button key={c.id} onClick={() => setSelectedCustomerId(c.id)}
+                  style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', background: 'rgba(255,255,255,0.04)', border: `1px solid ${COLORS.border}`, borderRadius: '8px', color: COLORS.text, cursor: 'pointer', textAlign: 'left' }}>
+                  <span><strong>{c.first_name} {c.last_name}</strong> <span style={{ color: COLORS.textMuted, fontSize: '0.85rem' }}>— {c.email}</span></span>
+                  <span style={{ color: COLORS.red }}>›</span>
+                </button>
+              ))}
+            </div>
+          </>
+        ) : (
+          <>
+            <div style={{ padding: '10px 12px', background: 'rgba(255,255,255,0.04)', borderRadius: '8px', marginBottom: '15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ color: COLORS.text }}>
+                <strong>{selectedCustomer.first_name} {selectedCustomer.last_name}</strong>
+                <span style={{ color: COLORS.textMuted, marginLeft: '8px', fontSize: '0.85rem' }}>{selectedCustomer.email}</span>
+              </span>
+              <button onClick={() => { setSelectedCustomerId(null); setSelectedProjectId(''); }} style={{ background: 'none', border: 'none', color: COLORS.red, cursor: 'pointer', fontSize: '0.85rem', textDecoration: 'underline' }}>Change customer</button>
+            </div>
+
+            <label style={labelStyle}>Select Project</label>
+            <select value={selectedProjectId} onChange={(e) => setSelectedProjectId(e.target.value)} style={{ ...inputStyle, appearance: 'auto', marginBottom: '12px' }}>
+              <option value="">Choose a project...</option>
+              {customerProjects.length === 0 ? <option disabled>This customer has no open jobs</option> :
+                customerProjects.map(p => <option key={p.id} value={p.id}>{p.service_type || p.title || `Project #${p.id}`} — ${parseFloat(p.total_amount || 0).toFixed(2)}</option>)
+              }
+            </select>
+
+            <div style={{ marginBottom: '10px' }}><label style={labelStyle}>Change Order Description</label><textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={3} style={{ ...inputStyle, resize: 'vertical' }} /></div>
+            <div style={{ marginBottom: '15px' }}><label style={labelStyle}>Proposed Amount ($)</label><input type="number" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} style={inputStyle} /></div>
+
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <button onClick={handleSubmit} disabled={isLoading} style={{ ...btnPrimary, padding: '10px 20px' }}>{isLoading ? 'Submitting...' : 'Submit Change Order'}</button>
+              <button onClick={onClose} style={btnSecondary}>Cancel</button>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ============================================
 // ADMIN: QUOTES TAB
 // ============================================
@@ -1985,18 +2186,18 @@ function AdminSearchTab({ token, user }) {
 function AdminRepsTab({ token, onRefresh }) {
   const [reps, setReps] = useState([]);
   const [showAddForm, setShowAddForm] = useState(false);
-  const [newRep, setNewRep] = useState({ firstName: '', lastName: '', email: '', phone: '', trade: '', notes: '' });
+  const [newRep, setNewRep] = useState({ firstName: '', lastName: '', email: '', phone: '', address: '', city: '', state: '', zipCode: '', trade: '', notes: '' });
   const [showConfirmDelete, setShowConfirmDelete] = useState(null);
- 
+
   useEffect(() => { api.adminGetReps(token).then(r => setReps(r.reps || [])); }, [token]);
- 
+
   const handleAddRep = async () => {
     if (!newRep.firstName || !newRep.lastName || !newRep.email) { alert('Name and email required'); return; }
     const result = await api.adminAddRep(newRep, token);
     if (result.rep) {
       alert(`Rep created! Temp password: ${result._devTempPassword || 'check logs'}`);
       setShowAddForm(false);
-      setNewRep({ firstName: '', lastName: '', email: '', phone: '', trade: '', notes: '' });
+      setNewRep({ firstName: '', lastName: '', email: '', phone: '', address: '', city: '', state: '', zipCode: '', trade: '', notes: '' });
       api.adminGetReps(token).then(r => setReps(r.reps || []));
     } else { alert(result.error || 'Failed to add rep'); }
   };
@@ -2025,6 +2226,12 @@ function AdminRepsTab({ token, onRefresh }) {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '10px' }}>
             <div><label style={labelStyle}>Email *</label><input type="email" value={newRep.email} onChange={(e) => setNewRep({ ...newRep, email: e.target.value })} style={inputStyle} /></div>
             <div><label style={labelStyle}>Phone</label><input value={newRep.phone} onChange={(e) => setNewRep({ ...newRep, phone: e.target.value })} style={inputStyle} /></div>
+          </div>
+          <div style={{ marginBottom: '10px' }}><label style={labelStyle}>Home Address</label><input value={newRep.address} onChange={(e) => setNewRep({ ...newRep, address: e.target.value })} style={inputStyle} placeholder="Street address" /></div>
+          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: '10px', marginBottom: '10px' }}>
+            <div><label style={labelStyle}>City</label><input value={newRep.city} onChange={(e) => setNewRep({ ...newRep, city: e.target.value })} style={inputStyle} /></div>
+            <div><label style={labelStyle}>State</label><input value={newRep.state} onChange={(e) => setNewRep({ ...newRep, state: e.target.value })} style={inputStyle} /></div>
+            <div><label style={labelStyle}>Zip</label><input value={newRep.zipCode} onChange={(e) => setNewRep({ ...newRep, zipCode: e.target.value })} style={inputStyle} /></div>
           </div>
           <div style={{ marginBottom: '10px' }}><label style={labelStyle}>Trade</label><input value={newRep.trade} onChange={(e) => setNewRep({ ...newRep, trade: e.target.value })} style={inputStyle} placeholder="e.g. Plumbing, Electrical" /></div>
           <div style={{ marginBottom: '15px' }}><label style={labelStyle}>Notes</label><textarea value={newRep.notes} onChange={(e) => setNewRep({ ...newRep, notes: e.target.value })} rows={2} style={{ ...inputStyle, resize: 'vertical' }} /></div>
