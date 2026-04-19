@@ -462,6 +462,8 @@ export default function HomeCareWebsite() {
 function MessageChat({ type, id, token, currentUser, readOnly = false }) {
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
+  const [attachments, setAttachments] = useState([]); // [{ id, url, preview }]
+  const [attaching, setAttaching] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isSending, setIsSending] = useState(false);
   const [expanded, setExpanded] = useState(false);
@@ -471,6 +473,19 @@ function MessageChat({ type, id, token, currentUser, readOnly = false }) {
 
   const isStaff = ['admin', 'master_admin', 'rep'].includes(currentUser?.user_type);
   const liveTitle = isStaff ? 'Message Customer' : 'Message Your Rep';
+  const API_BASE = API_URL.replace(/\/api$/, '');
+
+  const parseAttachments = (raw) => {
+    if (!raw) return [];
+    if (Array.isArray(raw)) return raw;
+    try { return JSON.parse(raw); } catch { return []; }
+  };
+
+  const resolveUrl = (a) => {
+    const u = typeof a === 'string' ? a : (a.url || '');
+    if (!u) return '';
+    return u.startsWith('http') ? u : `${API_BASE}${u}`;
+  };
 
   const fetchMessages = useCallback(async () => {
     try {
@@ -503,13 +518,42 @@ function MessageChat({ type, id, token, currentUser, readOnly = false }) {
     return () => clearInterval(interval);
   }, [fetchMessages, readOnly]);
 
+  const handleAttach = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    if (!file.type.startsWith('image/')) { alert('Please select an image file.'); return; }
+    if (file.size > 10 * 1024 * 1024) { alert('File is too large (max 10MB).'); return; }
+    setAttaching(true);
+    try {
+      const base64 = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+      const r = await api.uploadPhoto(base64, token);
+      if (r.id && r.url) {
+        setAttachments(prev => [...prev, { id: r.id, url: r.url, preview: base64 }]);
+      } else {
+        alert(r.error || 'Upload failed');
+      }
+    } catch (err) { alert('Upload failed.'); console.error(err); }
+    finally { setAttaching(false); }
+  };
+
+  const removeAttachment = (attId) => setAttachments(prev => prev.filter(a => a.id !== attId));
+
   const handleSend = async () => {
-    if (!newMessage.trim() || isSending) return;
+    if ((!newMessage.trim() && attachments.length === 0) || isSending) return;
     setIsSending(true);
     try {
-      const data = type === 'quote' ? { quoteRequestId: id, message: newMessage } : { projectId: id, message: newMessage };
+      const payload = attachments.map(a => ({ id: a.id, url: a.url }));
+      const base = type === 'quote' ? { quoteRequestId: id } : { projectId: id };
+      const data = { ...base, message: newMessage, attachments: payload };
       await api.sendMessage(data, token);
       setNewMessage('');
+      setAttachments([]);
       justSentRef.current = true;
       fetchMessages();
     } catch (e) { console.error('Error sending message:', e); }
@@ -544,13 +588,23 @@ function MessageChat({ type, id, token, currentUser, readOnly = false }) {
                    </div>
                  );
                }
+               const msgAttachments = parseAttachments(msg.attachments);
                return (
                  <div key={msg.id || i} style={{ display: 'flex', justifyContent: own ? 'flex-end' : 'flex-start', marginBottom: '10px' }}>
                    <div style={{ maxWidth: '75%', padding: '10px 14px', borderRadius: '12px', background: own ? 'rgba(59,130,246,0.2)' : 'rgba(255,255,255,0.08)', border: `1px solid ${own ? 'rgba(59,130,246,0.3)' : 'rgba(255,255,255,0.1)'}` }}>
                      <p style={{ color: COLORS.textMuted, fontSize: '0.75rem', marginBottom: '4px', fontWeight: 600 }}>
                        {msg.first_name} {msg.last_name}
                      </p>
-                     <p style={{ color: COLORS.text, fontSize: '0.95rem', lineHeight: '1.4', wordBreak: 'break-word' }}>{msg.message}</p>
+                     {msg.message && <p style={{ color: COLORS.text, fontSize: '0.95rem', lineHeight: '1.4', wordBreak: 'break-word' }}>{msg.message}</p>}
+                     {msgAttachments.length > 0 && (
+                       <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: msg.message ? '6px' : 0 }}>
+                         {msgAttachments.map((a, ai) => (
+                           <a key={a.id || ai} href={resolveUrl(a)} target="_blank" rel="noreferrer" style={{ display: 'block' }}>
+                             <img src={resolveUrl(a)} alt="attachment" style={{ width: '120px', height: '120px', objectFit: 'cover', borderRadius: '8px', border: `1px solid ${COLORS.border}` }} />
+                           </a>
+                         ))}
+                       </div>
+                     )}
                      <p style={{ color: COLORS.textMuted, fontSize: '0.7rem', fontStyle: 'italic', marginTop: '4px', textAlign: 'right' }}>
                        {formatDateTimeEST(msg.created_at)}
                      </p>
@@ -561,15 +615,34 @@ function MessageChat({ type, id, token, currentUser, readOnly = false }) {
           </div>
  
           {!readOnly && (
-            <div style={{ display: 'flex', gap: '8px', padding: '12px', borderTop: `1px solid ${COLORS.border}` }}>
-              <input value={newMessage} onChange={(e) => setNewMessage(e.target.value)}
-                onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
-                placeholder="Type a message..."
-                style={{ ...inputStyle, flex: 1, padding: '10px 14px', borderRadius: '10px' }} />
-              <button onClick={handleSend} disabled={isSending || !newMessage.trim()}
-                style={{ ...btnPrimary, padding: '10px 16px', borderRadius: '10px', opacity: isSending || !newMessage.trim() ? 0.5 : 1 }}>
-                <Send size={18} />
-              </button>
+            <div style={{ padding: '12px', borderTop: `1px solid ${COLORS.border}` }}>
+              {attachments.length > 0 && (
+                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '8px' }}>
+                  {attachments.map(a => (
+                    <div key={a.id} style={{ position: 'relative', width: '56px', height: '56px', borderRadius: '8px', overflow: 'hidden', border: `1px solid ${COLORS.border}` }}>
+                      <img src={a.preview} alt="attachment" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      <button type="button" onClick={() => removeAttachment(a.id)}
+                        style={{ position: 'absolute', top: '2px', right: '2px', width: '18px', height: '18px', borderRadius: '50%', background: 'rgba(0,0,0,0.7)', color: '#fff', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
+                        <X size={10} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '40px', background: 'transparent', border: `1px solid ${COLORS.borderRed}`, borderRadius: '10px', cursor: attaching ? 'wait' : 'pointer', color: COLORS.red }} title="Attach photo">
+                  {attaching ? '…' : <Plus size={18} />}
+                  <input type="file" accept="image/*" onChange={handleAttach} disabled={attaching} style={{ display: 'none' }} />
+                </label>
+                <input value={newMessage} onChange={(e) => setNewMessage(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
+                  placeholder="Type a message..."
+                  style={{ ...inputStyle, flex: 1, padding: '10px 14px', borderRadius: '10px' }} />
+                <button onClick={handleSend} disabled={isSending || (!newMessage.trim() && attachments.length === 0)}
+                  style={{ ...btnPrimary, padding: '10px 16px', borderRadius: '10px', opacity: isSending || (!newMessage.trim() && attachments.length === 0) ? 0.5 : 1 }}>
+                  <Send size={18} />
+                </button>
+              </div>
             </div>
           )}
         </div>
@@ -1083,24 +1156,27 @@ function PastJobsTab({ projects, token, user }) {
  
   return (
     <div style={{ display: 'grid', gap: '15px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 2fr 1fr', gap: '10px', padding: '0 20px', color: COLORS.textMuted, fontSize: '0.85rem', fontWeight: 600 }}>
+        <span>Date Closed</span><span>Job Type</span><span>Job Description</span><span>Status</span>
+      </div>
       {projects.map(project => (
         <div key={project.id}>
           <JobWindow onClick={() => setExpandedId(expandedId === project.id ? null : project.id)}>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 2fr 1fr', gap: '10px', alignItems: 'center' }}>
               <span style={{ color: COLORS.textLight }}>{formatDateEST(project.closed_at || project.created_at)}</span>
               <span style={{ color: COLORS.text, fontWeight: 600 }}>{project.service_type || project.title}</span>
-              <span style={{ color: COLORS.textMuted }}>{project.description}</span>
+              <span style={{ color: COLORS.textMuted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{project.description}</span>
               <StatusBadge status="closed" />
             </div>
           </JobWindow>
- 
+
           {expandedId === project.id && (
             <div style={{ ...cardStyle, marginTop: '5px' }}>
               <h3 style={{ color: COLORS.text, marginBottom: '10px' }}>{project.title}</h3>
               <p style={{ color: COLORS.textMuted, marginBottom: '10px' }}>{project.description}</p>
               <p style={{ color: COLORS.textLight }}><strong>Total Paid:</strong> ${parseFloat(project.total_amount || 0).toFixed(2)}</p>
               <p style={{ color: COLORS.textLight }}><strong>Completed:</strong> {formatDateEST(project.completed_at)}</p>
- 
+
               {/* Read-only messaging history */}
               <MessageChat type="project" id={project.id} token={token} currentUser={user} readOnly={true} />
             </div>
@@ -1121,9 +1197,11 @@ function RequestQuotePage({ user, token, isAuthenticated, setCurrentPage, onSucc
     address: user?.address || '', city: user?.city || '', state: user?.state || '', zipCode: user?.zip_code || '',
     serviceType: '', description: '', urgency: 'normal', preferredStartDate: ''
   });
+  const [photos, setPhotos] = useState([]); // [{ id, url, preview }]
+  const [photoUploading, setPhotoUploading] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [success, setSuccess] = useState(false);
- 
+
   useEffect(() => {
     if (user) {
       setFormData(prev => ({
@@ -1135,12 +1213,46 @@ function RequestQuotePage({ user, token, isAuthenticated, setCurrentPage, onSucc
       }));
     }
   }, [user]);
- 
+
+  const handlePhotoSelect = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    if (!file.type.startsWith('image/')) { alert('Please select an image file.'); return; }
+    if (file.size > 10 * 1024 * 1024) { alert('File is too large (max 10MB).'); return; }
+    if (!token) { alert('You must be logged in to attach photos. Submit the quote first, then attach photos via Messages.'); return; }
+    setPhotoUploading(true);
+    try {
+      const base64 = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+      const r = await api.uploadPhoto(base64, token);
+      if (r.id && r.url) {
+        const API_BASE = API_URL.replace(/\/api$/, '');
+        setPhotos(prev => [...prev, { id: r.id, url: `${API_BASE}${r.url}`, preview: base64 }]);
+      } else {
+        alert(r.error || 'Upload failed');
+      }
+    } catch (err) { alert('Upload failed.'); console.error(err); }
+    finally { setPhotoUploading(false); }
+  };
+
+  const removePhoto = (id) => setPhotos(prev => prev.filter(p => p.id !== id));
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
     try {
-      const result = await api.submitQuote(formData, token);
+      // Append attached-photo URLs to the description so admin can see them until a proper media field exists.
+      let descriptionWithPhotos = formData.description;
+      if (photos.length > 0) {
+        const lines = photos.map(p => `- ${p.url}`).join('\n');
+        descriptionWithPhotos += `\n\nAttached photos:\n${lines}`;
+      }
+      const result = await api.submitQuote({ ...formData, description: descriptionWithPhotos }, token);
       if (result.quoteRequest) {
         setSuccess(true);
         if (onSuccess) setTimeout(onSuccess, 2000);
@@ -1194,6 +1306,28 @@ function RequestQuotePage({ user, token, isAuthenticated, setCurrentPage, onSucc
           </select>
         </div>
         <div style={{ marginBottom: '12px' }}><label style={labelStyle}>Project Description *</label><textarea required rows={4} value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} style={{ ...inputStyle, resize: 'vertical' }} placeholder="Describe the work you need done..." /></div>
+
+        {/* Photo upload (optional) */}
+        <div style={{ marginBottom: '12px' }}>
+          <label style={labelStyle}>Attach a Photo (Optional)</label>
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+            {photos.map(p => (
+              <div key={p.id} style={{ position: 'relative', width: '72px', height: '72px', borderRadius: '8px', overflow: 'hidden', border: `1px solid ${COLORS.border}` }}>
+                <img src={p.preview} alt="attachment" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                <button type="button" onClick={() => removePhoto(p.id)}
+                  style={{ position: 'absolute', top: '2px', right: '2px', width: '20px', height: '20px', borderRadius: '50%', background: 'rgba(0,0,0,0.7)', color: '#fff', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
+                  <X size={12} />
+                </button>
+              </div>
+            ))}
+            <label style={{ width: '72px', height: '72px', borderRadius: '8px', border: `2px dashed ${COLORS.borderRed}`, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: photoUploading ? 'wait' : 'pointer', color: COLORS.red, background: 'rgba(220,38,38,0.05)' }}>
+              {photoUploading ? '…' : <Plus size={24} />}
+              <input type="file" accept="image/*" onChange={handlePhotoSelect} disabled={photoUploading} style={{ display: 'none' }} />
+            </label>
+          </div>
+          {!isAuthenticated && <p style={{ color: COLORS.textMuted, fontSize: '0.8rem', marginTop: '6px' }}>Sign in to attach photos to your request.</p>}
+        </div>
+
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '20px' }}>
           <div>
             <label style={labelStyle}>Urgency</label>
@@ -1701,50 +1835,47 @@ function AdminTodaysJobs({ jobs, token, user, onRefresh }) {
 
   return (
     <div style={{ display: 'grid', gap: '12px' }}>
-      {jobs.map(job => {
-        const addressParts = [job.address, job.city, job.state, job.zip_code].filter(Boolean);
-        const fullAddress = addressParts.join(', ');
-        const reps = (job.assigned_reps && job.assigned_reps.length > 0)
-          ? job.assigned_reps.map(r => `${r.rep_name}${r.trade ? ` (${r.trade})` : ''}`).join(', ')
-          : null;
-        return (
-          <div key={job.id}>
-            <JobWindow onClick={() => setExpandedId(expandedId === job.id ? null : job.id)}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px', marginBottom: '8px' }}>
-                <span style={{ color: COLORS.text, fontWeight: 700, fontSize: '1.05rem' }}>{job.service_type || job.title}</span>
-                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                  <span style={{ color: COLORS.textLight, fontSize: '0.9rem' }}>${parseFloat(job.total_amount || 0).toFixed(2)}</span>
-                  <StatusBadge status={job.status} />
-                </div>
-              </div>
+      <AdminJobsHeader />
+      {jobs.map(job => (
+        <div key={job.id}>
+          <JobWindow onClick={() => setExpandedId(expandedId === job.id ? null : job.id)}>
+            <AdminJobPreviewRow job={job} />
+          </JobWindow>
+          {expandedId === job.id && (
+            <AdminJobExpanded job={job} token={token} user={user} onRefresh={onRefresh} />
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
 
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '6px 16px', fontSize: '0.88rem' }}>
-                <div style={{ color: COLORS.textLight }}>
-                  <strong style={{ color: COLORS.textMuted }}>Customer:</strong> {job.first_name} {job.last_name}
-                </div>
-                <div style={{ color: COLORS.textLight }}>
-                  <strong style={{ color: COLORS.textMuted }}>Phone:</strong> {job.phone || <em style={{ color: COLORS.textMuted }}>N/A</em>}
-                </div>
-                <div style={{ color: COLORS.textLight }}>
-                  <strong style={{ color: COLORS.textMuted }}>Start Date:</strong>{' '}
-                  {job.scheduled_date ? formatDateEST(job.scheduled_date) : <em style={{ color: COLORS.textMuted }}>TBD</em>}
-                </div>
-                <div style={{ color: COLORS.textLight, gridColumn: '1 / -1' }}>
-                  <strong style={{ color: COLORS.textMuted }}>Address:</strong> {fullAddress || <em style={{ color: COLORS.textMuted }}>N/A</em>}
-                </div>
-                <div style={{ color: COLORS.textLight, gridColumn: '1 / -1', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <Briefcase size={13} style={{ color: COLORS.red }} />
-                  <strong style={{ color: COLORS.textMuted }}>Reps Assigned:</strong>
-                  <span>{reps || <em style={{ color: COLORS.textMuted }}>None</em>}</span>
-                </div>
-              </div>
-            </JobWindow>
-            {expandedId === job.id && (
-              <AdminJobExpanded job={job} token={token} user={user} onRefresh={onRefresh} />
-            )}
-          </div>
-        );
-      })}
+// Shared preview row + header for admin job-style lists (Today's Jobs, Projects)
+const adminJobCols = '0.9fr 1.1fr 1fr 1fr 1.4fr 1.2fr 0.8fr 0.8fr';
+function AdminJobsHeader() {
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: adminJobCols, gap: '10px', padding: '0 20px', color: COLORS.textMuted, fontSize: '0.8rem', fontWeight: 600 }}>
+      <span>Start Date</span><span>Job Type</span><span>Customer</span><span>Phone</span><span>Address</span><span>Reps</span><span>Amount</span><span>Status</span>
+    </div>
+  );
+}
+function AdminJobPreviewRow({ job }) {
+  const addressParts = [job.address, job.city, job.state].filter(Boolean);
+  const fullAddress = addressParts.join(', ');
+  const reps = (job.assigned_reps && job.assigned_reps.length > 0)
+    ? job.assigned_reps.map(r => r.rep_name).join(', ')
+    : '—';
+  const cellStyle = { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: '0.88rem' };
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: adminJobCols, gap: '10px', alignItems: 'center' }}>
+      <span style={{ ...cellStyle, color: COLORS.textLight }}>{job.scheduled_date ? formatDateEST(job.scheduled_date) : 'TBD'}</span>
+      <span style={{ ...cellStyle, color: COLORS.text, fontWeight: 600 }}>{job.service_type || job.title}</span>
+      <span style={{ ...cellStyle, color: COLORS.textLight }}>{job.first_name} {job.last_name}</span>
+      <span style={{ ...cellStyle, color: COLORS.textLight }}>{job.phone || '—'}</span>
+      <span style={{ ...cellStyle, color: COLORS.textLight }} title={fullAddress}>{fullAddress || '—'}</span>
+      <span style={{ ...cellStyle, color: COLORS.textLight }} title={reps}>{reps}</span>
+      <span style={{ ...cellStyle, color: COLORS.textLight }}>${parseFloat(job.total_amount || 0).toFixed(2)}</span>
+      <span><StatusBadge status={job.status} /></span>
     </div>
   );
 }
@@ -2071,23 +2202,23 @@ function AdminQuotesTab({ quotes, token, onRefresh, user }) {
           <div style={{ ...cardStyle, textAlign: 'center' }}>
             <p style={{ color: COLORS.textMuted }}>{search ? 'No quotes match your search.' : 'No quotes yet.'}</p>
           </div>
-        ) : filtered.map(quote => (
+        ) : (<>
+          <div style={{ display: 'grid', gridTemplateColumns: '0.9fr 1.1fr 1fr 1fr 1.8fr 0.9fr', gap: '10px', padding: '0 20px', color: COLORS.textMuted, fontSize: '0.8rem', fontWeight: 600 }}>
+            <span>Date Requested</span><span>Job Type</span><span>Customer</span><span>Phone</span><span>Description</span><span>Status</span>
+          </div>
+          {filtered.map(quote => (
           <div key={quote.id}>
             <JobWindow onClick={() => setExpandedId(expandedId === quote.id ? null : quote.id)}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
-                <div style={{ flex: '1 1 60%', minWidth: 0 }}>
-                  <span style={{ color: COLORS.text, fontWeight: 600 }}>{quote.service_type || quote.title}</span>
-                  <span style={{ color: COLORS.textMuted, marginLeft: '10px', fontSize: '0.85rem' }}>{quote.first_name} {quote.last_name} — {formatDateEST(quote.created_at)}</span>
-                </div>
-                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                  <StatusBadge status={quote.status} />
-                </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '0.9fr 1.1fr 1fr 1fr 1.8fr 0.9fr', gap: '10px', alignItems: 'center' }}>
+                {(() => { const cell = { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: '0.88rem' }; return (<>
+                  <span style={{ ...cell, color: COLORS.textLight }}>{formatDateEST(quote.created_at)}</span>
+                  <span style={{ ...cell, color: COLORS.text, fontWeight: 600 }}>{quote.service_type || quote.title}</span>
+                  <span style={{ ...cell, color: COLORS.textLight }}>{quote.first_name} {quote.last_name}</span>
+                  <span style={{ ...cell, color: COLORS.textLight }}>{quote.phone || '—'}</span>
+                  <span style={{ ...cell, color: COLORS.textMuted }} title={quote.description}>{quote.description || '—'}</span>
+                  <span><StatusBadge status={quote.status} /></span>
+                </>); })()}
               </div>
-              {quote.description && (
-                <div style={{ marginTop: '6px', color: COLORS.textMuted, fontSize: '0.85rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {quote.description}
-                </div>
-              )}
             </JobWindow>
 
             {expandedId === quote.id && (
@@ -2140,12 +2271,13 @@ function AdminQuotesTab({ quotes, token, onRefresh, user }) {
               </div>
             )}
           </div>
-        ))}
+          ))}
+        </>)}
       </div>
     </div>
   );
 }
- 
+
 // ============================================
 // ADMIN: PROJECTS TAB
 // ============================================
@@ -2182,50 +2314,19 @@ function AdminProjectsTab({ projects, token, user, onRefresh }) {
           <div style={{ ...cardStyle, textAlign: 'center' }}>
             <p style={{ color: COLORS.textMuted }}>{search ? 'No projects match your search.' : 'No projects yet.'}</p>
           </div>
-        ) : filtered.map(job => {
-          const addressParts = [job.address, job.city, job.state, job.zip_code].filter(Boolean);
-          const fullAddress = addressParts.join(', ');
-          const reps = (job.assigned_reps && job.assigned_reps.length > 0)
-            ? job.assigned_reps.map(r => `${r.rep_name}${r.trade ? ` (${r.trade})` : ''}`).join(', ')
-            : null;
-          return (
-            <div key={job.id}>
-              <JobWindow onClick={() => setExpandedId(expandedId === job.id ? null : job.id)}>
-                {/* Top row: service type + status/amount */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px', marginBottom: '8px' }}>
-                  <span style={{ color: COLORS.text, fontWeight: 700, fontSize: '1.05rem' }}>{job.service_type || job.title}</span>
-                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                    <span style={{ color: COLORS.textLight, fontSize: '0.9rem' }}>${parseFloat(job.total_amount || 0).toFixed(2)}</span>
-                    <StatusBadge status={job.status} />
-                  </div>
-                </div>
-
-                {/* Info grid: customer, phone, start date, address, reps */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '6px 16px', fontSize: '0.88rem' }}>
-                  <div style={{ color: COLORS.textLight }}>
-                    <strong style={{ color: COLORS.textMuted }}>Customer:</strong> {job.first_name} {job.last_name}
-                  </div>
-                  <div style={{ color: COLORS.textLight }}>
-                    <strong style={{ color: COLORS.textMuted }}>Phone:</strong> {job.phone || <em style={{ color: COLORS.textMuted }}>N/A</em>}
-                  </div>
-                  <div style={{ color: COLORS.textLight }}>
-                    <strong style={{ color: COLORS.textMuted }}>Start Date:</strong>{' '}
-                    {job.scheduled_date ? formatDateEST(job.scheduled_date) : <em style={{ color: COLORS.textMuted }}>TBD</em>}
-                  </div>
-                  <div style={{ color: COLORS.textLight, gridColumn: '1 / -1' }}>
-                    <strong style={{ color: COLORS.textMuted }}>Address:</strong> {fullAddress || <em style={{ color: COLORS.textMuted }}>N/A</em>}
-                  </div>
-                  <div style={{ color: COLORS.textLight, gridColumn: '1 / -1', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <Briefcase size={13} style={{ color: COLORS.red }} />
-                    <strong style={{ color: COLORS.textMuted }}>Reps Assigned:</strong>
-                    <span>{reps || <em style={{ color: COLORS.textMuted }}>None</em>}</span>
-                  </div>
-                </div>
-              </JobWindow>
-              {expandedId === job.id && <AdminJobExpanded job={job} token={token} user={user} onRefresh={onRefresh} />}
-            </div>
-          );
-        })}
+        ) : (
+          <>
+            <AdminJobsHeader />
+            {filtered.map(job => (
+              <div key={job.id}>
+                <JobWindow onClick={() => setExpandedId(expandedId === job.id ? null : job.id)}>
+                  <AdminJobPreviewRow job={job} />
+                </JobWindow>
+                {expandedId === job.id && <AdminJobExpanded job={job} token={token} user={user} onRefresh={onRefresh} />}
+              </div>
+            ))}
+          </>
+        )}
       </div>
     </div>
   );
@@ -2301,22 +2402,34 @@ function AdminSearchTab({ token, user }) {
       {hasSearched && (
         <div style={{ display: 'grid', gap: '10px' }}>
           {results.length === 0 ? <p style={{ color: COLORS.textMuted, textAlign: 'center' }}>No results found.</p> :
-            results.map((item, i) => (
-              <JobWindow key={i}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
-                  <div>
-                    <span style={{ color: COLORS.text, fontWeight: 600 }}>{item.service_type}</span>
-                    {item.first_name && <span style={{ color: COLORS.textMuted, marginLeft: '10px', fontSize: '0.85rem' }}>{item.first_name} {item.last_name}</span>}
-                    <p style={{ color: COLORS.textMuted, fontSize: '0.85rem', marginTop: '4px' }}>{item.description?.substring(0, 100)}</p>
+            results.map((item, i) => {
+              const activityMap = {
+                open_quote: { label: 'Open Quote', color: COLORS.yellow, bg: 'rgba(251,191,36,0.12)', border: 'rgba(251,191,36,0.35)' },
+                open_job: { label: 'Open Job', color: COLORS.blue, bg: 'rgba(59,130,246,0.12)', border: 'rgba(59,130,246,0.35)' },
+                closed_job: { label: 'Closed Job', color: COLORS.textMuted, bg: 'rgba(156,163,175,0.12)', border: 'rgba(156,163,175,0.35)' },
+                quote: { label: 'Open Quote', color: COLORS.yellow, bg: 'rgba(251,191,36,0.12)', border: 'rgba(251,191,36,0.35)' },
+                project: { label: 'Open Job', color: COLORS.blue, bg: 'rgba(59,130,246,0.12)', border: 'rgba(59,130,246,0.35)' },
+              };
+              const activity = activityMap[item.activity_type] || { label: item.activity_type || 'Activity', color: COLORS.textMuted, bg: 'rgba(255,255,255,0.05)', border: 'rgba(255,255,255,0.1)' };
+              return (
+                <JobWindow key={i}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+                    <div style={{ minWidth: 0, flex: '1 1 60%' }}>
+                      <span style={{ color: COLORS.text, fontWeight: 600 }}>{item.service_type}</span>
+                      {item.first_name && <span style={{ color: COLORS.textMuted, marginLeft: '10px', fontSize: '0.85rem' }}>{item.first_name} {item.last_name}</span>}
+                      <p style={{ color: COLORS.textMuted, fontSize: '0.85rem', marginTop: '4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.description}</p>
+                    </div>
+                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                      <span style={{ color: COLORS.textMuted, fontSize: '0.8rem' }}>{formatDateEST(item.created_at)}</span>
+                      <span style={{ padding: '0.3rem 0.7rem', borderRadius: '999px', background: activity.bg, border: `1px solid ${activity.border}`, color: activity.color, fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.02em' }}>
+                        {activity.label}
+                      </span>
+                      <StatusBadge status={item.status} />
+                    </div>
                   </div>
-                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                    <span style={{ color: COLORS.textMuted, fontSize: '0.8rem' }}>{formatDateEST(item.created_at)}</span>
-                    <StatusBadge status={item.activity_type === 'quote' ? item.status : item.status} />
-                    <span style={{ padding: '0.3rem 0.6rem', borderRadius: '6px', background: 'rgba(255,255,255,0.05)', color: COLORS.textMuted, fontSize: '0.75rem', textTransform: 'capitalize' }}>{item.activity_type?.replace('_', ' ')}</span>
-                  </div>
-                </div>
-              </JobWindow>
-            ))
+                </JobWindow>
+              );
+            })
           }
         </div>
       )}
