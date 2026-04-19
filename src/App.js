@@ -348,9 +348,9 @@ export default function HomeCareWebsite() {
           maxWidth: '1400px',
           margin: '0 auto',
           padding: '0 2rem',
-          height: '220px',
+          height: '260px',
           display: 'grid',
-          gridTemplateColumns: '300px 1fr auto',
+          gridTemplateColumns: '360px 1fr auto',
           alignItems: 'center',
           gap: '6rem'
         }}>
@@ -361,12 +361,12 @@ export default function HomeCareWebsite() {
             <img
               src={LOGO}
               alt="Greenwich Property Care"
-              style={{ height: '216px', width: 'auto', display: 'block' }}
+              style={{ height: '256px', width: 'auto', display: 'block' }}
             />
           </div>
 
           {/* Desktop Menu */}
-          <div className="desktop-nav" style={{ display: 'flex', gap: '30px', alignItems: 'center' }}>
+          <div className="desktop-nav" style={{ display: 'flex', gap: '52px', alignItems: 'center' }}>
             {[
               { key: 'home', label: 'Home' },
               { key: 'services', label: 'Services' },
@@ -382,7 +382,7 @@ export default function HomeCareWebsite() {
                   border: 'none',
                   color: currentPage === key ? '#dc2626' : '#f5f5f5',
                   cursor: 'pointer',
-                  fontSize: '1.15rem',
+                  fontSize: '1.3rem',
                   fontWeight: '600',
                   transition: 'all 0.3s ease',
                   position: 'relative',
@@ -458,6 +458,7 @@ export default function HomeCareWebsite() {
           .mobile-menu-btn { display: block !important; }
           .nav-inner { height: 120px !important; grid-template-columns: 1fr auto !important; gap: 1rem !important; }
           .nav-inner img { height: 100px !important; }
+          .footer-grid { grid-template-columns: 1fr !important; }
         }
       `}</style>
  
@@ -3332,21 +3333,21 @@ function Footer({ setCurrentPage }) {
       position: 'relative',
       zIndex: 1
     }}>
-      <div style={{
+      <div className="footer-grid" style={{
         maxWidth: '1400px',
         margin: '0 auto',
         display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
-        gap: '3rem',
+        gridTemplateColumns: '1fr 1fr 1fr',
+        gap: '2rem',
         marginBottom: '30px'
       }}>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
           <img
             src={LOGO}
             alt="Greenwich Property Care"
-            style={{ height: '189px', width: 'auto', display: 'block', marginBottom: '1rem' }}
+            style={{ height: '189px', width: 'auto', display: 'block', marginBottom: '0.25rem' }}
           />
-          <p style={{ color: '#a3a3a3', lineHeight: '1.6', fontSize: '0.95rem', textAlign: 'left' }}>
+          <p style={{ color: '#a3a3a3', lineHeight: '1.4', fontSize: '0.95rem', textAlign: 'left', margin: 0 }}>
             Your trusted partner for all home improvement and maintenance needs.
           </p>
         </div>
