@@ -153,6 +153,14 @@ const api = {
     const r = await fetch(`${API_URL}/payments/confirm`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify({ paymentIntentId }) });
     return r.json();
   },
+  createSetupIntent: async (token) => {
+    const r = await fetch(`${API_URL}/payments/setup-intent`, { method: 'POST', headers: { 'Authorization': `Bearer ${token}` } });
+    return r.json();
+  },
+  saveCard: async (paymentMethodId, token) => {
+    const r = await fetch(`${API_URL}/payments/save-card`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify({ paymentMethodId }) });
+    return r.json();
+  },
   // Admin
   adminGetQuotes: async (token) => {
     const r = await fetch(`${API_URL}/admin/quotes`, { headers: { 'Authorization': `Bearer ${token}` } }); return r.json();
@@ -728,7 +736,7 @@ function CustomerPortal({ user, token, onLogout, setCurrentPage, refreshUser }) 
       )}
  
       {!isLoading && activeTab === 'open-quotes' && (
-        <OpenQuotesTab quotes={openQuotes} token={token} user={user} onRefresh={fetchData} />
+        <OpenQuotesTab quotes={openQuotes} token={token} user={user} onRefresh={fetchData} goToSettings={() => setActiveTab('settings')} />
       )}
  
       {!isLoading && activeTab === 'open-jobs' && (
@@ -749,10 +757,15 @@ function CustomerPortal({ user, token, onLogout, setCurrentPage, refreshUser }) 
 // ============================================
 // OPEN QUOTES TAB
 // ============================================
-function OpenQuotesTab({ quotes, token, user, onRefresh }) {
+function OpenQuotesTab({ quotes, token, user, onRefresh, goToSettings }) {
   const [expandedId, setExpandedId] = useState(null);
- 
+
   const handleAccept = async (quoteId) => {
+    if (!user?.has_payment_method) {
+      alert('A credit card on file is required to initiate a job. We will redirect you to Settings to add one.');
+      if (goToSettings) goToSettings();
+      return;
+    }
     if (!window.confirm('Accept this quote? A 20% deposit will be required to activate the job.')) return;
     try {
       const result = await api.acceptQuote(quoteId, token);
@@ -1226,10 +1239,22 @@ function LoginPage({ onLoginSuccess, setCurrentPage }) {
 // REGISTER PAGE
 // ============================================
 function RegisterPage({ onRegisterSuccess, setCurrentPage }) {
+  return (
+    <Elements stripe={stripePromise}>
+      <RegisterForm onRegisterSuccess={onRegisterSuccess} setCurrentPage={setCurrentPage} />
+    </Elements>
+  );
+}
+
+function RegisterForm({ onRegisterSuccess, setCurrentPage }) {
+  const stripe = useStripe();
+  const elements = useElements();
   const [formData, setFormData] = useState({ firstName: '', lastName: '', email: '', password: '', confirmPassword: '', phone: '', address: '', city: '', state: '', zipCode: '' });
+  const [cardComplete, setCardComplete] = useState(false);
+  const [cardSaving, setCardSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
- 
+
   const handleRegister = async (e) => {
     e.preventDefault(); setError('');
     if (formData.password !== formData.confirmPassword) { setError('Passwords do not match'); return; }
@@ -1237,12 +1262,38 @@ function RegisterPage({ onRegisterSuccess, setCurrentPage }) {
     setIsLoading(true);
     try {
       const result = await api.register({ email: formData.email, password: formData.password, firstName: formData.firstName, lastName: formData.lastName, phone: formData.phone, address: formData.address, city: formData.city, state: formData.state, zipCode: formData.zipCode });
-      if (result.token) { onRegisterSuccess(result.user, result.token); setCurrentPage('portal'); }
-      else { setError(result.error || 'Registration failed'); }
+      if (!result.token) { setError(result.error || 'Registration failed'); setIsLoading(false); return; }
+
+      let user = result.user;
+
+      // If a card was entered, save it via SetupIntent. Failures don't block registration.
+      const cardElement = elements?.getElement(CardElement);
+      if (cardElement && cardComplete && stripe) {
+        setCardSaving(true);
+        try {
+          const si = await api.createSetupIntent(result.token);
+          if (si.clientSecret) {
+            const { setupIntent, error: stripeErr } = await stripe.confirmCardSetup(si.clientSecret, {
+              payment_method: { card: cardElement, billing_details: { name: `${formData.firstName} ${formData.lastName}`.trim(), email: formData.email } }
+            });
+            if (stripeErr) {
+              console.warn('Card save failed:', stripeErr.message);
+            } else if (setupIntent?.payment_method) {
+              await api.saveCard(setupIntent.payment_method, result.token);
+              const me = await api.getMe(result.token);
+              if (me.user) user = me.user;
+            }
+          }
+        } catch (cardErr) { console.error('Card save threw:', cardErr); }
+        finally { setCardSaving(false); }
+      }
+
+      onRegisterSuccess(user, result.token);
+      setCurrentPage('portal');
     } catch (e) { setError('Registration failed. Please try again.'); }
     finally { setIsLoading(false); }
   };
- 
+
   return (
     <div style={{ padding: '60px 2rem', maxWidth: '600px', margin: '0 auto' }}>
       <h1 style={{ fontFamily: '"Oswald", sans-serif', fontSize: '2.5rem', textAlign: 'center', marginBottom: '20px', background: `linear-gradient(135deg, #ffffff 0%, ${COLORS.red} 100%)`, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Create Your Account</h1>
@@ -1264,7 +1315,24 @@ function RegisterPage({ onRegisterSuccess, setCurrentPage }) {
           <div><label style={labelStyle}>Password *</label><input type="password" required value={formData.password} onChange={(e) => setFormData({ ...formData, password: e.target.value })} style={inputStyle} placeholder="Min 6 characters" /></div>
           <div><label style={labelStyle}>Confirm Password *</label><input type="password" required value={formData.confirmPassword} onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })} style={inputStyle} /></div>
         </div>
-        <button type="submit" disabled={isLoading} style={{ ...btnPrimary, width: '100%', opacity: isLoading ? 0.6 : 1 }}>{isLoading ? 'Creating Account...' : 'Create Account'}</button>
+
+        {/* Optional Credit Card */}
+        <div style={{ borderTop: `1px solid ${COLORS.border}`, paddingTop: '20px', marginBottom: '20px' }}>
+          <label style={{ ...labelStyle, marginBottom: '6px' }}>Credit Card (Optional)</label>
+          <p style={{ color: COLORS.textMuted, fontSize: '0.85rem', marginBottom: '10px' }}>
+            Not required to create an account or to receive a quote. A card on file is required before you can initiate a job — you can add or update it any time in Settings.
+          </p>
+          <div style={{ ...inputStyle, padding: '14px' }}>
+            <CardElement
+              onChange={(e) => setCardComplete(e.complete)}
+              options={{ style: { base: { fontSize: '16px', color: COLORS.text, '::placeholder': { color: '#6b7280' } } } }}
+            />
+          </div>
+        </div>
+
+        <button type="submit" disabled={isLoading || cardSaving} style={{ ...btnPrimary, width: '100%', opacity: (isLoading || cardSaving) ? 0.6 : 1 }}>
+          {cardSaving ? 'Saving Card...' : isLoading ? 'Creating Account...' : 'Create Account'}
+        </button>
         <p style={{ marginTop: '15px', textAlign: 'center', color: COLORS.textMuted, fontSize: '0.9rem' }}>
           Already have an account? <span onClick={() => setCurrentPage('portal')} style={{ color: COLORS.red, cursor: 'pointer', textDecoration: 'underline' }}>Login here</span>
         </p>
@@ -1397,9 +1465,10 @@ function AccountSettingsPage({ user, token, refreshUser, setCurrentPage }) {
     <div style={{ padding: '40px 2rem', maxWidth: '600px', margin: '0 auto' }}>
       <h1 style={{ fontFamily: '"Oswald", sans-serif', fontSize: '2rem', marginBottom: '20px', color: COLORS.text }}>Account Settings</h1>
  
-      <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
+      <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', flexWrap: 'wrap' }}>
         <button onClick={() => { setActiveSection('info'); setMessage(''); }} style={{ ...( activeSection === 'info' ? btnPrimary : btnSecondary), padding: '8px 20px', fontSize: '0.9rem' }}>Edit Account Info</button>
         <button onClick={() => { setActiveSection('password'); setMessage(''); }} style={{ ...(activeSection === 'password' ? btnPrimary : btnSecondary), padding: '8px 20px', fontSize: '0.9rem' }}>Change Password</button>
+        <button onClick={() => { setActiveSection('payment'); setMessage(''); }} style={{ ...(activeSection === 'payment' ? btnPrimary : btnSecondary), padding: '8px 20px', fontSize: '0.9rem' }}>Payment Method</button>
       </div>
  
       {message && <div style={{ background: message.includes('success') ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.1)', border: `1px solid ${message.includes('success') ? 'rgba(34,197,94,0.3)' : 'rgba(239,68,68,0.3)'}`, borderRadius: '10px', padding: '10px', marginBottom: '15px', color: message.includes('success') ? COLORS.green : COLORS.redLight, textAlign: 'center' }}>{message}</div>}
@@ -1435,7 +1504,81 @@ function AccountSettingsPage({ user, token, refreshUser, setCurrentPage }) {
           <button type="submit" disabled={isLoading} style={{ ...btnPrimary, width: '100%' }}>{isLoading ? 'Changing...' : 'Change Password'}</button>
         </form>
       )}
+
+      {activeSection === 'payment' && (
+        <PaymentMethodSection user={user} token={token} refreshUser={refreshUser} />
+      )}
     </div>
+  );
+}
+
+// ============================================
+// PAYMENT METHOD SECTION (used inside Account Settings)
+// ============================================
+function PaymentMethodSection({ user, token, refreshUser }) {
+  return (
+    <Elements stripe={stripePromise}>
+      <PaymentMethodForm user={user} token={token} refreshUser={refreshUser} />
+    </Elements>
+  );
+}
+
+function PaymentMethodForm({ user, token, refreshUser }) {
+  const stripe = useStripe();
+  const elements = useElements();
+  const [cardComplete, setCardComplete] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [message, setMessage] = useState('');
+
+  const handleSaveCard = async (e) => {
+    e.preventDefault(); setMessage('');
+    if (!stripe || !elements || !cardComplete) { setMessage('Please enter complete card details.'); return; }
+    setIsSaving(true);
+    try {
+      const si = await api.createSetupIntent(token);
+      if (!si.clientSecret) { setMessage(si.error || 'Could not start card setup.'); setIsSaving(false); return; }
+      const cardElement = elements.getElement(CardElement);
+      const { setupIntent, error: stripeErr } = await stripe.confirmCardSetup(si.clientSecret, {
+        payment_method: { card: cardElement, billing_details: { name: `${user?.first_name || ''} ${user?.last_name || ''}`.trim(), email: user?.email } }
+      });
+      if (stripeErr) { setMessage(stripeErr.message || 'Card setup failed.'); }
+      else if (setupIntent?.payment_method) {
+        const saveResult = await api.saveCard(setupIntent.payment_method, token);
+        if (saveResult.success) {
+          setMessage('Card saved successfully!');
+          await refreshUser();
+          cardElement.clear();
+          setCardComplete(false);
+        } else {
+          setMessage(saveResult.error || 'Failed to save card.');
+        }
+      }
+    } catch (err) { setMessage('Card save failed. Please try again.'); console.error(err); }
+    finally { setIsSaving(false); }
+  };
+
+  return (
+    <form onSubmit={handleSaveCard} style={cardStyle}>
+      {user?.has_payment_method && (
+        <div style={{ background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.3)', borderRadius: '10px', padding: '12px', marginBottom: '15px', color: COLORS.green }}>
+          💳 Card on file: <strong>{user.payment_method_brand}</strong> ending in <strong>{user.payment_method_last4}</strong>
+        </div>
+      )}
+      <p style={{ color: COLORS.textMuted, fontSize: '0.9rem', marginBottom: '12px' }}>
+        {user?.has_payment_method ? 'Enter a new card below to replace the one on file.' : 'A card on file is required before initiating any job. Your card will not be charged until you accept a quote and agree to the deposit.'}
+      </p>
+      <label style={labelStyle}>Card Details</label>
+      <div style={{ ...inputStyle, padding: '14px', marginBottom: '15px' }}>
+        <CardElement
+          onChange={(e) => setCardComplete(e.complete)}
+          options={{ style: { base: { fontSize: '16px', color: COLORS.text, '::placeholder': { color: '#6b7280' } } } }}
+        />
+      </div>
+      {message && <div style={{ background: message.includes('success') ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.1)', border: `1px solid ${message.includes('success') ? 'rgba(34,197,94,0.3)' : 'rgba(239,68,68,0.3)'}`, borderRadius: '10px', padding: '10px', marginBottom: '12px', color: message.includes('success') ? COLORS.green : COLORS.redLight, textAlign: 'center' }}>{message}</div>}
+      <button type="submit" disabled={isSaving || !cardComplete} style={{ ...btnPrimary, width: '100%', opacity: (isSaving || !cardComplete) ? 0.6 : 1 }}>
+        {isSaving ? 'Saving Card...' : user?.has_payment_method ? 'Replace Card' : 'Save Card'}
+      </button>
+    </form>
   );
 }
  
