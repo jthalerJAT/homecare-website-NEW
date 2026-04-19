@@ -288,9 +288,6 @@ export default function HomeCareWebsite() {
         return <CustomerPortal user={user} token={token} onLogout={handleLogout} setCurrentPage={setCurrentPage} refreshUser={refreshUser} />;
       case 'register': return <RegisterPage onRegisterSuccess={handleLogin} setCurrentPage={setCurrentPage} />;
       case 'forgot-password': return <ForgotPasswordPage setCurrentPage={setCurrentPage} />;
-      case 'account-settings':
-        if (!isAuthenticated) return <LoginPage onLoginSuccess={handleLogin} setCurrentPage={setCurrentPage} />;
-        return <AccountSettingsPage user={user} token={token} refreshUser={refreshUser} setCurrentPage={setCurrentPage} />;
       case 'about': return <AboutPage />;
       default: return <HomePage setCurrentPage={setCurrentPage} />;
     }
@@ -386,23 +383,6 @@ export default function HomeCareWebsite() {
                 )}
               </button>
             ))}
-            {isAuthenticated && (
-              <button
-                onClick={() => { setCurrentPage('account-settings'); setMobileMenuOpen(false); }}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  color: currentPage === 'account-settings' ? '#dc2626' : '#a3a3a3',
-                  cursor: 'pointer',
-                  fontSize: '1rem',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px'
-                }}
-              >
-                <Settings size={18} /> Settings
-              </button>
-            )}
           </div>
 
           {/* Mobile Menu Button */}
@@ -444,24 +424,6 @@ export default function HomeCareWebsite() {
                 {page === 'request-quote' ? 'Get Quote' : page === 'portal' ? (isAuthenticated ? 'My Account' : 'Login') : page}
               </button>
             ))}
-            {isAuthenticated && (
-              <button
-                onClick={() => { setCurrentPage('account-settings'); setMobileMenuOpen(false); }}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  color: '#a3a3a3',
-                  cursor: 'pointer',
-                  fontSize: '1rem',
-                  display: 'block',
-                  width: '100%',
-                  textAlign: 'left',
-                  padding: '0.75rem 0'
-                }}
-              >
-                Account Settings
-              </button>
-            )}
           </div>
         )}
       </nav>
@@ -735,6 +697,7 @@ function CustomerPortal({ user, token, onLogout, setCurrentPage, refreshUser }) 
     { key: 'open-quotes', label: `Open Quotes (${openQuotes.length})`, icon: <Clock size={16} /> },
     { key: 'open-jobs', label: `Open Jobs (${openJobs.length})`, icon: <Briefcase size={16} /> },
     { key: 'past-jobs', label: `Past Jobs (${pastJobs.length})`, icon: <CheckCircle size={16} /> },
+    { key: 'settings', label: 'Settings', icon: <Settings size={16} /> },
   ];
  
   return (
@@ -775,10 +738,14 @@ function CustomerPortal({ user, token, onLogout, setCurrentPage, refreshUser }) 
       {!isLoading && activeTab === 'past-jobs' && (
         <PastJobsTab projects={pastJobs} token={token} user={user} />
       )}
+
+      {!isLoading && activeTab === 'settings' && (
+        <AccountSettingsPage user={user} token={token} refreshUser={refreshUser} setCurrentPage={setCurrentPage} />
+      )}
     </div>
   );
 }
- 
+
 // ============================================
 // OPEN QUOTES TAB
 // ============================================
@@ -1468,10 +1435,6 @@ function AccountSettingsPage({ user, token, refreshUser, setCurrentPage }) {
           <button type="submit" disabled={isLoading} style={{ ...btnPrimary, width: '100%' }}>{isLoading ? 'Changing...' : 'Change Password'}</button>
         </form>
       )}
- 
-      <p style={{ marginTop: '20px', textAlign: 'center' }}>
-        <span onClick={() => setCurrentPage('portal')} style={{ color: COLORS.red, cursor: 'pointer', textDecoration: 'underline' }}>← Back to My Account</span>
-      </p>
     </div>
   );
 }
