@@ -208,6 +208,17 @@ const api = {
   adminGetReps: async (token) => {
     const r = await fetch(`${API_URL}/admin/reps`, { headers: { 'Authorization': `Bearer ${token}` } }); return r.json();
   },
+  adminGetAdmins: async (token) => {
+    const r = await fetch(`${API_URL}/admin/admins`, { headers: { 'Authorization': `Bearer ${token}` } }); return r.json();
+  },
+  adminPromoteToAdmin: async (userId, token) => {
+    const r = await fetch(`${API_URL}/admin/admins`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify({ userId }) });
+    return r.json();
+  },
+  adminDemoteAdmin: async (userId, token) => {
+    const r = await fetch(`${API_URL}/admin/admins/${userId}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
+    return r.json();
+  },
   adminAddRep: async (data, token) => {
     const r = await fetch(`${API_URL}/admin/reps`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify(data) });
     return r.json();
@@ -1766,6 +1777,7 @@ function AdminDashboard({ user, token, onLogout }) {
     { key: 'projects', label: `Projects (${projects.length})` },
     { key: 'search', label: 'Search Activity' },
     { key: 'reps', label: 'Manage Reps' },
+    ...(user?.user_type === 'master_admin' ? [{ key: 'admins', label: 'Manage Admins' }] : []),
     { key: 'messages', label: 'Messages' },
   ];
  
@@ -1821,6 +1833,7 @@ function AdminDashboard({ user, token, onLogout }) {
       {!isLoading && activeTab === 'projects' && <AdminProjectsTab projects={projects} token={token} user={user} onRefresh={fetchData} />}
       {!isLoading && activeTab === 'search' && <AdminSearchTab token={token} user={user} />}
       {!isLoading && activeTab === 'reps' && <AdminRepsTab token={token} onRefresh={fetchData} />}
+      {!isLoading && activeTab === 'admins' && user?.user_type === 'master_admin' && <AdminAdminsTab token={token} currentUser={user} />}
       {!isLoading && activeTab === 'messages' && <AdminMessagesTab token={token} user={user} />}
     </div>
   );
@@ -2569,7 +2582,159 @@ function AdminMessagesTab({ token, user }) {
     </div>
   );
 }
- 
+
+// ============================================
+// ADMIN: ADMINS TAB (Manage Admins — master_admin only)
+// ============================================
+function AdminAdminsTab({ token, currentUser }) {
+  const [admins, setAdmins] = useState([]);
+  const [customers, setCustomers] = useState([]);
+  const [expandedId, setExpandedId] = useState(null);
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [filter, setFilter] = useState('');
+  const [confirmAdd, setConfirmAdd] = useState(null); // user object pending confirmation
+  const [confirmRemove, setConfirmRemove] = useState(null); // user object pending removal
+
+  const refresh = useCallback(async () => {
+    const [a, c] = await Promise.all([api.adminGetAdmins(token), api.adminGetCustomers(token)]);
+    setAdmins(a.admins || []);
+    setCustomers(c.customers || []);
+  }, [token]);
+
+  useEffect(() => { refresh(); }, [refresh]);
+
+  const filteredCustomers = !filter.trim() ? customers :
+    customers.filter(c => `${c.first_name} ${c.last_name} ${c.email}`.toLowerCase().includes(filter.toLowerCase()));
+
+  const handlePromote = async (userId) => {
+    const r = await api.adminPromoteToAdmin(userId, token);
+    if (r.user) {
+      setConfirmAdd(null);
+      setShowAddForm(false);
+      setFilter('');
+      refresh();
+    } else {
+      alert(r.error || 'Failed to promote user');
+    }
+  };
+
+  const handleDemote = async (userId) => {
+    const r = await api.adminDemoteAdmin(userId, token);
+    if (r.message) {
+      setConfirmRemove(null);
+      refresh();
+    } else {
+      alert(r.error || 'Failed to remove admin role');
+    }
+  };
+
+  return (
+    <div>
+      {confirmAdd && (
+        <ConfirmDialog
+          message={`Confirm ${confirmAdd.first_name} ${confirmAdd.last_name} as New Admin?`}
+          onConfirm={() => handlePromote(confirmAdd.id)}
+          onCancel={() => setConfirmAdd(null)}
+        />
+      )}
+      {confirmRemove && (
+        <ConfirmDialog
+          message={`Remove ${confirmRemove.first_name} ${confirmRemove.last_name}'s admin role? They will revert to a customer account.`}
+          onConfirm={() => handleDemote(confirmRemove.id)}
+          onCancel={() => setConfirmRemove(null)}
+        />
+      )}
+
+      <div style={{ display: 'grid', gap: '12px' }}>
+        {admins.length === 0 ? (
+          <div style={{ ...cardStyle, textAlign: 'center' }}>
+            <p style={{ color: COLORS.textMuted }}>No admins yet.</p>
+          </div>
+        ) : admins.map(a => {
+          const isMaster = a.user_type === 'master_admin';
+          const isSelf = a.id === currentUser?.id;
+          return (
+            <div key={a.id}>
+              <JobWindow onClick={() => setExpandedId(expandedId === a.id ? null : a.id)}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+                  <div style={{ minWidth: 0 }}>
+                    <span style={{ color: COLORS.text, fontWeight: 600 }}>{a.first_name} {a.last_name}</span>
+                    <span style={{ color: COLORS.textMuted, marginLeft: '10px', fontSize: '0.85rem' }}>{a.email}</span>
+                  </div>
+                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                    <span style={{ padding: '0.3rem 0.7rem', borderRadius: '999px', background: isMaster ? 'rgba(220,38,38,0.15)' : 'rgba(59,130,246,0.12)', border: `1px solid ${isMaster ? 'rgba(220,38,38,0.4)' : 'rgba(59,130,246,0.35)'}`, color: isMaster ? COLORS.red : COLORS.blue, fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                      {isMaster ? 'Master Admin' : 'Admin'}
+                    </span>
+                    {!isMaster && !isSelf && (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setConfirmRemove(a); }}
+                        style={{ ...btnSecondary, padding: '6px 12px', fontSize: '0.85rem', borderColor: 'rgba(239,68,68,0.3)', color: COLORS.redLight }}
+                      >
+                        <Trash2 size={14} /> Remove Admin
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </JobWindow>
+              {expandedId === a.id && (
+                <div style={{ ...cardStyle, marginTop: '5px' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '8px' }}>
+                    <p style={{ color: COLORS.textLight }}><strong style={{ color: COLORS.textMuted }}>Email:</strong> {a.email}</p>
+                    <p style={{ color: COLORS.textLight }}><strong style={{ color: COLORS.textMuted }}>Phone:</strong> {a.phone || '—'}</p>
+                    <p style={{ color: COLORS.textLight }}><strong style={{ color: COLORS.textMuted }}>Joined:</strong> {formatDateEST(a.created_at)}</p>
+                    <p style={{ color: COLORS.textLight }}><strong style={{ color: COLORS.textMuted }}>Role:</strong> {isMaster ? 'Master Admin' : 'Admin'}</p>
+                  </div>
+                  {isSelf && <p style={{ color: COLORS.textMuted, fontStyle: 'italic', fontSize: '0.85rem', marginTop: '10px' }}>This is you.</p>}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      <div style={{ marginTop: '20px' }}>
+        {!showAddForm ? (
+          <button onClick={() => setShowAddForm(true)} style={{ ...btnPrimary, padding: '10px 20px' }}>
+            <Plus size={16} style={{ marginRight: '4px' }} /> Admin
+          </button>
+        ) : (
+          <div style={{ ...cardStyle, borderColor: COLORS.red }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+              <h4 style={{ color: COLORS.red, fontFamily: '"Oswald", sans-serif' }}>Promote a Customer to Admin</h4>
+              <button onClick={() => { setShowAddForm(false); setFilter(''); }} style={{ background: 'none', border: 'none', color: COLORS.textMuted, cursor: 'pointer' }}><X size={20} /></button>
+            </div>
+            <input
+              type="text"
+              value={filter}
+              onChange={(e) => setFilter(e.target.value)}
+              placeholder="Type to filter by name or email..."
+              style={{ ...inputStyle, marginBottom: '8px' }}
+              autoFocus
+            />
+            <div style={{ display: 'grid', gap: '6px', maxHeight: '300px', overflowY: 'auto' }}>
+              {filteredCustomers.length === 0 ? (
+                <p style={{ color: COLORS.textMuted, fontStyle: 'italic', textAlign: 'center', padding: '20px' }}>No customers match.</p>
+              ) : filteredCustomers.map(c => (
+                <button
+                  key={c.id}
+                  onClick={() => setConfirmAdd(c)}
+                  style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', background: 'rgba(255,255,255,0.04)', border: `1px solid ${COLORS.border}`, borderRadius: '8px', color: COLORS.text, cursor: 'pointer', textAlign: 'left' }}
+                >
+                  <span><strong>{c.first_name} {c.last_name}</strong> <span style={{ color: COLORS.textMuted, fontSize: '0.85rem' }}>— {c.email}</span></span>
+                  <span style={{ color: COLORS.red }}>›</span>
+                </button>
+              ))}
+            </div>
+            <p style={{ color: COLORS.textMuted, fontSize: '0.8rem', marginTop: '10px' }}>
+              Only customer accounts can be promoted. Reps must be demoted first via SQL if needed.
+            </p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ============================================
 // REP PORTAL
 // ============================================
