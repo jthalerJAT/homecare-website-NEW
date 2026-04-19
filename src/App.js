@@ -219,6 +219,10 @@ const api = {
     const r = await fetch(`${API_URL}/admin/admins/${userId}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
     return r.json();
   },
+  adminGetAssignableStaff: async (token) => {
+    const r = await fetch(`${API_URL}/admin/assignable-staff`, { headers: { 'Authorization': `Bearer ${token}` } });
+    return r.json();
+  },
   adminAddRep: async (data, token) => {
     const r = await fetch(`${API_URL}/admin/reps`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify(data) });
     return r.json();
@@ -1912,10 +1916,10 @@ function AdminJobExpanded({ job, token, user, onRefresh }) {
   const loadReps = useCallback(async () => {
     const [assigned, all] = await Promise.all([
       api.adminGetProjectReps(job.id, token),
-      api.adminGetReps(token),
+      api.adminGetAssignableStaff(token),
     ]);
     setAssignedReps(assigned.reps || []);
-    setAvailableReps(all.reps || []);
+    setAvailableReps(all.staff || []);
   }, [job.id, token]);
 
   useEffect(() => { if (showRepAssign) loadReps(); }, [showRepAssign, loadReps]);
@@ -1963,7 +1967,10 @@ function AdminJobExpanded({ job, token, user, onRefresh }) {
     .filter(r => {
       if (!repFilter) return true;
       const q = repFilter.toLowerCase();
-      return `${r.first_name} ${r.last_name}`.toLowerCase().includes(q) || (r.trade || '').toLowerCase().includes(q);
+      const roleLabel = ['admin', 'master_admin'].includes(r.user_type) ? 'foreman admin' : 'rep';
+      return `${r.first_name} ${r.last_name}`.toLowerCase().includes(q)
+        || (r.trade || '').toLowerCase().includes(q)
+        || roleLabel.includes(q);
     });
 
   return (
@@ -2027,26 +2034,35 @@ function AdminJobExpanded({ job, token, user, onRefresh }) {
             </div>
           )}
 
-          <label style={labelStyle}>Add a Rep</label>
+          <label style={labelStyle}>Add a Rep or Foreman</label>
           <input
             type="text"
             value={repFilter}
             onChange={(e) => setRepFilter(e.target.value)}
-            placeholder="Type to filter by name or trade..."
+            placeholder="Type to filter by name, role, or trade..."
             style={{ ...inputStyle, marginBottom: '8px' }}
           />
           {filteredAvailable.length === 0 ? (
             <p style={{ color: COLORS.textMuted, fontStyle: 'italic', fontSize: '0.85rem' }}>
-              {availableReps.length === 0 ? 'No reps in roster yet.' : 'No matching reps available.'}
+              {availableReps.length === 0 ? 'No staff in roster yet.' : 'No matching staff available.'}
             </p>
           ) : (
             <div style={{ display: 'grid', gap: '6px', maxHeight: '200px', overflowY: 'auto' }}>
-              {filteredAvailable.map(r => (
-                <button key={r.id} onClick={() => handleAssignRep(r.id)} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', background: 'rgba(255,255,255,0.04)', border: `1px solid ${COLORS.border}`, borderRadius: '6px', color: COLORS.text, cursor: 'pointer', textAlign: 'left' }}>
-                  <span><strong>{r.first_name} {r.last_name}</strong> — {r.trade || 'No trade'}</span>
-                  <span style={{ color: COLORS.green, fontSize: '0.85rem' }}>+ Confirm Rep Assignment</span>
-                </button>
-              ))}
+              {filteredAvailable.map(r => {
+                const isAdmin = ['admin', 'master_admin'].includes(r.user_type);
+                return (
+                  <button key={r.id} onClick={() => handleAssignRep(r.id)} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', background: 'rgba(255,255,255,0.04)', border: `1px solid ${COLORS.border}`, borderRadius: '6px', color: COLORS.text, cursor: 'pointer', textAlign: 'left' }}>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <strong>{r.first_name} {r.last_name}</strong>
+                      <span style={{ padding: '0.15rem 0.5rem', borderRadius: '999px', fontSize: '0.7rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', background: isAdmin ? 'rgba(220,38,38,0.15)' : 'rgba(59,130,246,0.12)', color: isAdmin ? COLORS.red : COLORS.blue, border: `1px solid ${isAdmin ? 'rgba(220,38,38,0.4)' : 'rgba(59,130,246,0.35)'}` }}>
+                        {isAdmin ? 'Foreman' : 'Rep'}
+                      </span>
+                      <span style={{ color: COLORS.textMuted, fontSize: '0.85rem' }}>— {r.trade || 'No trade'}</span>
+                    </span>
+                    <span style={{ color: COLORS.green, fontSize: '0.85rem' }}>+ Confirm Assignment</span>
+                  </button>
+                );
+              })}
             </div>
           )}
         </div>
