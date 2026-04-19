@@ -465,8 +465,13 @@ function MessageChat({ type, id, token, currentUser, readOnly = false }) {
   const [isLoading, setIsLoading] = useState(true);
   const [isSending, setIsSending] = useState(false);
   const [expanded, setExpanded] = useState(false);
-  const messagesEndRef = useRef(null);
- 
+  const scrollContainerRef = useRef(null);
+  const lastMessageCountRef = useRef(0);
+  const justSentRef = useRef(false);
+
+  const isStaff = ['admin', 'master_admin', 'rep'].includes(currentUser?.user_type);
+  const liveTitle = isStaff ? 'Message Customer' : 'Message Your Rep';
+
   const fetchMessages = useCallback(async () => {
     try {
       const result = await api.getMessages(type, id, token);
@@ -474,17 +479,30 @@ function MessageChat({ type, id, token, currentUser, readOnly = false }) {
     } catch (e) { console.error('Error fetching messages:', e); }
     finally { setIsLoading(false); }
   }, [type, id, token]);
- 
+
   useEffect(() => { fetchMessages(); }, [fetchMessages]);
-  useEffect(() => { if (expanded) messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages, expanded]);
- 
+
+  // Scroll the inner container to the bottom ONLY when the user just sent a message,
+  // or on first expand. Never scroll on poll-driven refreshes — that hijacks page scroll.
+  useEffect(() => {
+    if (!expanded) return;
+    const shouldScroll =
+      justSentRef.current ||                                 // user just pressed send
+      (messages.length > 0 && lastMessageCountRef.current === 0); // initial load after open
+    if (shouldScroll && scrollContainerRef.current) {
+      scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
+    }
+    justSentRef.current = false;
+    lastMessageCountRef.current = messages.length;
+  }, [messages, expanded]);
+
   // Poll for new messages every 10s
   useEffect(() => {
     if (readOnly) return;
     const interval = setInterval(fetchMessages, 10000);
     return () => clearInterval(interval);
   }, [fetchMessages, readOnly]);
- 
+
   const handleSend = async () => {
     if (!newMessage.trim() || isSending) return;
     setIsSending(true);
@@ -492,11 +510,12 @@ function MessageChat({ type, id, token, currentUser, readOnly = false }) {
       const data = type === 'quote' ? { quoteRequestId: id, message: newMessage } : { projectId: id, message: newMessage };
       await api.sendMessage(data, token);
       setNewMessage('');
+      justSentRef.current = true;
       fetchMessages();
     } catch (e) { console.error('Error sending message:', e); }
     finally { setIsSending(false); }
   };
- 
+
   const isOwnMessage = (msg) => msg.sender_id === currentUser?.id;
  
   return (
@@ -504,14 +523,14 @@ function MessageChat({ type, id, token, currentUser, readOnly = false }) {
       <div onClick={() => setExpanded(!expanded)}
         style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', color: COLORS.red, fontWeight: 600, marginBottom: '10px' }}>
         <MessageSquare size={16} />
-        {readOnly ? 'Quote Messaging History' : 'Message Your Rep'}
+        {readOnly ? 'Quote Messaging History' : liveTitle}
         <span style={{ color: COLORS.textMuted, fontSize: '0.85rem' }}>({messages.length} messages)</span>
         {expanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
       </div>
  
       {expanded && (
         <div style={{ background: 'rgba(10,10,10,0.5)', borderRadius: '12px', border: `1px solid ${COLORS.border}`, overflow: 'hidden' }}>
-          <div style={{ maxHeight: '350px', overflowY: 'auto', padding: '15px' }}>
+          <div ref={scrollContainerRef} style={{ maxHeight: '350px', overflowY: 'auto', padding: '15px' }}>
             {isLoading ? <p style={{ color: COLORS.textMuted, textAlign: 'center' }}>Loading messages...</p> :
              messages.length === 0 ? <p style={{ color: COLORS.textMuted, textAlign: 'center', fontStyle: 'italic' }}>No messages yet</p> :
              messages.map((msg, i) => {
@@ -539,7 +558,6 @@ function MessageChat({ type, id, token, currentUser, readOnly = false }) {
                  </div>
                );
              })}
-            <div ref={messagesEndRef} />
           </div>
  
           {!readOnly && (
@@ -1981,10 +1999,12 @@ function AdminStandaloneChangeOrder({ token, projects, onClose, onCreated }) {
 // ADMIN: QUOTES TAB
 // ============================================
 function AdminQuotesTab({ quotes, token, onRefresh, user }) {
+  const [expandedId, setExpandedId] = useState(null);
   const [selectedQuote, setSelectedQuote] = useState(null);
   const [quoteForm, setQuoteForm] = useState({ amount: '', duration: '', scope: '', proposedStartDate: '', proposedWorkTime: '' });
   const [showConfirmDelete, setShowConfirmDelete] = useState(null);
- 
+  const [search, setSearch] = useState('');
+
   const handleSendQuote = async (requestId) => {
     try {
       await api.adminCreateQuote(requestId, {
@@ -1998,61 +2018,106 @@ function AdminQuotesTab({ quotes, token, onRefresh, user }) {
       onRefresh();
     } catch (e) { alert('Failed to send quote'); }
   };
- 
+
+  const filtered = !search.trim() ? quotes : quotes.filter(q => {
+    const s = search.toLowerCase();
+    return [q.service_type, q.title, q.description, q.first_name, q.last_name, q.email, q.phone]
+      .filter(Boolean).some(v => String(v).toLowerCase().includes(s));
+  });
+
   return (
-    <div style={{ display: 'grid', gap: '12px' }}>
-      {quotes.map(quote => (
-        <div key={quote.id} style={cardStyle}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '10px', flexWrap: 'wrap', gap: '10px' }}>
-            <div>
-              <h3 style={{ color: COLORS.text, fontSize: '1.1rem', fontWeight: 600 }}>{quote.service_type || quote.title}</h3>
-              <p style={{ color: COLORS.textMuted, fontSize: '0.85rem' }}>{formatDateTimeEST(quote.created_at)}</p>
-            </div>
-            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-              <StatusBadge status={quote.status} />
-              <button onClick={() => setShowConfirmDelete(quote.id)} style={{ background: 'none', border: 'none', color: COLORS.textMuted, cursor: 'pointer' }}><Trash2 size={16} /></button>
-            </div>
+    <div>
+      <div style={{ position: 'relative', marginBottom: '15px' }}>
+        <Search size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: COLORS.textMuted }} />
+        <input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search quotes by service, customer, description..."
+          style={{ ...inputStyle, paddingLeft: '36px', paddingRight: search ? '36px' : '0.875rem' }}
+        />
+        {search && (
+          <button onClick={() => setSearch('')} style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: COLORS.textMuted, cursor: 'pointer', padding: '4px' }}>
+            <X size={16} />
+          </button>
+        )}
+      </div>
+
+      <div style={{ display: 'grid', gap: '12px' }}>
+        {filtered.length === 0 ? (
+          <div style={{ ...cardStyle, textAlign: 'center' }}>
+            <p style={{ color: COLORS.textMuted }}>{search ? 'No quotes match your search.' : 'No quotes yet.'}</p>
           </div>
- 
-          {showConfirmDelete === quote.id && <ConfirmDialog message="Delete this quote request?" onConfirm={async () => { await api.adminDeleteQuote(quote.id, token); setShowConfirmDelete(null); onRefresh(); }} onCancel={() => setShowConfirmDelete(null)} />}
- 
-          <div style={{ background: 'rgba(10,10,10,0.5)', borderRadius: '8px', padding: '10px', marginBottom: '10px' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '6px', fontSize: '0.9rem' }}>
-              <p style={{ color: COLORS.textLight }}><strong style={{ color: COLORS.textMuted }}>Name:</strong> {quote.first_name} {quote.last_name}</p>
-              <p style={{ color: COLORS.textLight }}><strong style={{ color: COLORS.textMuted }}>Email:</strong> {quote.email}</p>
-              <p style={{ color: COLORS.textLight }}><strong style={{ color: COLORS.textMuted }}>Phone:</strong> {quote.phone || 'N/A'}</p>
-            </div>
-            <p style={{ color: COLORS.textLight, marginTop: '6px', fontSize: '0.9rem' }}><strong style={{ color: COLORS.textMuted }}>Description:</strong> {quote.description}</p>
-          </div>
- 
-          {quote.status === 'pending' && (
-            selectedQuote === quote.id ? (
-              <div style={{ background: `${COLORS.red}08`, border: `1px solid ${COLORS.borderRed}`, borderRadius: '10px', padding: '15px' }}>
-                <h4 style={{ color: COLORS.red, marginBottom: '10px' }}>Send Quote to Customer</h4>
-                <div style={{ display: 'grid', gap: '10px' }}>
-                  <div><label style={labelStyle}>Amount ($)</label><input type="number" value={quoteForm.amount} onChange={(e) => setQuoteForm({ ...quoteForm, amount: e.target.value })} style={inputStyle} /></div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                    <div><label style={labelStyle}>Proposed Start Date</label><input type="date" value={quoteForm.proposedStartDate} onChange={(e) => setQuoteForm({ ...quoteForm, proposedStartDate: e.target.value })} style={inputStyle} /></div>
-                    <div><label style={labelStyle}>Work Time</label><input value={quoteForm.proposedWorkTime} onChange={(e) => setQuoteForm({ ...quoteForm, proposedWorkTime: e.target.value })} placeholder="e.g. 2-3 weeks" style={inputStyle} /></div>
-                  </div>
-                  <div><label style={labelStyle}>Scope of Work</label><textarea value={quoteForm.scope} onChange={(e) => setQuoteForm({ ...quoteForm, scope: e.target.value })} rows={3} style={{ ...inputStyle, resize: 'vertical' }} /></div>
-                  <div style={{ display: 'flex', gap: '10px' }}>
-                    <button onClick={() => handleSendQuote(quote.id)} style={{ ...btnPrimary, flex: 1 }}>Send Quote</button>
-                    <button onClick={() => setSelectedQuote(null)} style={btnSecondary}>Cancel</button>
-                  </div>
+        ) : filtered.map(quote => (
+          <div key={quote.id}>
+            <JobWindow onClick={() => setExpandedId(expandedId === quote.id ? null : quote.id)}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+                <div style={{ flex: '1 1 60%', minWidth: 0 }}>
+                  <span style={{ color: COLORS.text, fontWeight: 600 }}>{quote.service_type || quote.title}</span>
+                  <span style={{ color: COLORS.textMuted, marginLeft: '10px', fontSize: '0.85rem' }}>{quote.first_name} {quote.last_name} — {formatDateEST(quote.created_at)}</span>
+                </div>
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                  <StatusBadge status={quote.status} />
                 </div>
               </div>
-            ) : (
-              <button onClick={() => setSelectedQuote(quote.id)} style={{ ...btnPrimary, padding: '8px 20px', fontSize: '0.9rem' }}>Create & Send Quote</button>
-            )
-          )}
- 
-          {quote.status === 'quoted' && <p style={{ color: COLORS.red, padding: '8px', background: `${COLORS.red}10`, borderRadius: '8px' }}>✓ Quote sent - awaiting customer response</p>}
-          {quote.status === 'accepted' && <p style={{ color: COLORS.green, padding: '8px', background: `${COLORS.green}10`, borderRadius: '8px' }}>✓ Accepted - Project created</p>}
- 
-          <MessageChat type="quote" id={quote.id} token={token} currentUser={{ id: 0, ...user }} />
-        </div>
-      ))}
+              {quote.description && (
+                <div style={{ marginTop: '6px', color: COLORS.textMuted, fontSize: '0.85rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {quote.description}
+                </div>
+              )}
+            </JobWindow>
+
+            {expandedId === quote.id && (
+              <div style={{ ...cardStyle, marginTop: '5px', borderColor: COLORS.red }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '12px', flexWrap: 'wrap', gap: '10px' }}>
+                  <div>
+                    <h3 style={{ color: COLORS.red, fontSize: '1.1rem', fontWeight: 600, fontFamily: '"Oswald", sans-serif' }}>{quote.service_type || quote.title}</h3>
+                    <p style={{ color: COLORS.textMuted, fontSize: '0.85rem' }}>{formatDateTimeEST(quote.created_at)}</p>
+                  </div>
+                  <button onClick={() => setShowConfirmDelete(quote.id)} style={{ background: 'none', border: 'none', color: COLORS.textMuted, cursor: 'pointer' }}><Trash2 size={16} /></button>
+                </div>
+
+                {showConfirmDelete === quote.id && <ConfirmDialog message="Delete this quote request?" onConfirm={async () => { await api.adminDeleteQuote(quote.id, token); setShowConfirmDelete(null); onRefresh(); }} onCancel={() => setShowConfirmDelete(null)} />}
+
+                <div style={{ background: 'rgba(10,10,10,0.5)', borderRadius: '8px', padding: '10px', marginBottom: '12px' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '6px', fontSize: '0.9rem' }}>
+                    <p style={{ color: COLORS.textLight }}><strong style={{ color: COLORS.textMuted }}>Name:</strong> {quote.first_name} {quote.last_name}</p>
+                    <p style={{ color: COLORS.textLight }}><strong style={{ color: COLORS.textMuted }}>Email:</strong> {quote.email}</p>
+                    <p style={{ color: COLORS.textLight }}><strong style={{ color: COLORS.textMuted }}>Phone:</strong> {quote.phone || 'N/A'}</p>
+                  </div>
+                  <p style={{ color: COLORS.textLight, marginTop: '6px', fontSize: '0.9rem' }}><strong style={{ color: COLORS.textMuted }}>Description:</strong> {quote.description}</p>
+                </div>
+
+                {quote.status === 'pending' && (
+                  selectedQuote === quote.id ? (
+                    <div style={{ background: `${COLORS.red}08`, border: `1px solid ${COLORS.borderRed}`, borderRadius: '10px', padding: '15px' }}>
+                      <h4 style={{ color: COLORS.red, marginBottom: '10px' }}>Send Quote to Customer</h4>
+                      <div style={{ display: 'grid', gap: '10px' }}>
+                        <div><label style={labelStyle}>Amount ($)</label><input type="number" value={quoteForm.amount} onChange={(e) => setQuoteForm({ ...quoteForm, amount: e.target.value })} style={inputStyle} /></div>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                          <div><label style={labelStyle}>Proposed Start Date</label><input type="date" value={quoteForm.proposedStartDate} onChange={(e) => setQuoteForm({ ...quoteForm, proposedStartDate: e.target.value })} style={inputStyle} /></div>
+                          <div><label style={labelStyle}>Work Time</label><input value={quoteForm.proposedWorkTime} onChange={(e) => setQuoteForm({ ...quoteForm, proposedWorkTime: e.target.value })} placeholder="e.g. 2-3 weeks" style={inputStyle} /></div>
+                        </div>
+                        <div><label style={labelStyle}>Scope of Work</label><textarea value={quoteForm.scope} onChange={(e) => setQuoteForm({ ...quoteForm, scope: e.target.value })} rows={3} style={{ ...inputStyle, resize: 'vertical' }} /></div>
+                        <div style={{ display: 'flex', gap: '10px' }}>
+                          <button onClick={() => handleSendQuote(quote.id)} style={{ ...btnPrimary, flex: 1 }}>Send Quote</button>
+                          <button onClick={() => setSelectedQuote(null)} style={btnSecondary}>Cancel</button>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <button onClick={() => setSelectedQuote(quote.id)} style={{ ...btnPrimary, padding: '8px 20px', fontSize: '0.9rem' }}>Create &amp; Send Quote</button>
+                  )
+                )}
+
+                {quote.status === 'quoted' && <p style={{ color: COLORS.red, padding: '8px', background: `${COLORS.red}10`, borderRadius: '8px', marginTop: '10px' }}>✓ Quote sent - awaiting customer response</p>}
+                {quote.status === 'accepted' && <p style={{ color: COLORS.green, padding: '8px', background: `${COLORS.green}10`, borderRadius: '8px', marginTop: '10px' }}>✓ Accepted - Project created</p>}
+
+                <MessageChat type="quote" id={quote.id} token={token} currentUser={user} />
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -2062,14 +2127,42 @@ function AdminQuotesTab({ quotes, token, onRefresh, user }) {
 // ============================================
 function AdminProjectsTab({ projects, token, user, onRefresh }) {
   const [expandedId, setExpandedId] = useState(null);
+  const [search, setSearch] = useState('');
+
+  const filtered = !search.trim() ? projects : projects.filter(j => {
+    const q = search.toLowerCase();
+    const repNames = (j.assigned_reps || []).map(r => r.rep_name).join(' ').toLowerCase();
+    return [j.title, j.service_type, j.description, j.first_name, j.last_name, j.email, repNames]
+      .filter(Boolean).some(v => String(v).toLowerCase().includes(q));
+  });
+
   return (
-    <div style={{ display: 'grid', gap: '12px' }}>
-      {projects.length === 0 ? <div style={{ ...cardStyle, textAlign: 'center' }}><p style={{ color: COLORS.textMuted }}>No projects yet.</p></div> :
-        projects.map(job => (
+    <div>
+      <div style={{ position: 'relative', marginBottom: '15px' }}>
+        <Search size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: COLORS.textMuted }} />
+        <input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search projects by service, customer, rep, description..."
+          style={{ ...inputStyle, paddingLeft: '36px', paddingRight: search ? '36px' : '0.875rem' }}
+        />
+        {search && (
+          <button onClick={() => setSearch('')} style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: COLORS.textMuted, cursor: 'pointer', padding: '4px' }}>
+            <X size={16} />
+          </button>
+        )}
+      </div>
+
+      <div style={{ display: 'grid', gap: '12px' }}>
+        {filtered.length === 0 ? (
+          <div style={{ ...cardStyle, textAlign: 'center' }}>
+            <p style={{ color: COLORS.textMuted }}>{search ? 'No projects match your search.' : 'No projects yet.'}</p>
+          </div>
+        ) : filtered.map(job => (
           <div key={job.id}>
             <JobWindow onClick={() => setExpandedId(expandedId === job.id ? null : job.id)}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
-                <div>
+                <div style={{ flex: '1 1 60%', minWidth: 0 }}>
                   <span style={{ color: COLORS.text, fontWeight: 600 }}>{job.title || job.service_type}</span>
                   <span style={{ color: COLORS.textMuted, marginLeft: '10px', fontSize: '0.85rem' }}>{job.first_name} {job.last_name} — {formatDateEST(job.created_at)}</span>
                 </div>
@@ -2078,11 +2171,20 @@ function AdminProjectsTab({ projects, token, user, onRefresh }) {
                   <StatusBadge status={job.status} />
                 </div>
               </div>
+              <div style={{ marginTop: '6px', color: COLORS.textMuted, fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                <Briefcase size={13} style={{ color: COLORS.red }} />
+                <strong style={{ color: COLORS.textMuted }}>Reps Assigned:</strong>
+                <span style={{ color: COLORS.textLight }}>
+                  {(job.assigned_reps && job.assigned_reps.length > 0)
+                    ? job.assigned_reps.map(r => `${r.rep_name}${r.trade ? ` (${r.trade})` : ''}`).join(', ')
+                    : <em style={{ color: COLORS.textMuted }}>None</em>}
+                </span>
+              </div>
             </JobWindow>
             {expandedId === job.id && <AdminJobExpanded job={job} token={token} user={user} onRefresh={onRefresh} />}
           </div>
-        ))
-      }
+        ))}
+      </div>
     </div>
   );
 }
