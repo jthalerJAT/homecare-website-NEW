@@ -2158,32 +2158,50 @@ function AdminProjectsTab({ projects, token, user, onRefresh }) {
           <div style={{ ...cardStyle, textAlign: 'center' }}>
             <p style={{ color: COLORS.textMuted }}>{search ? 'No projects match your search.' : 'No projects yet.'}</p>
           </div>
-        ) : filtered.map(job => (
-          <div key={job.id}>
-            <JobWindow onClick={() => setExpandedId(expandedId === job.id ? null : job.id)}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
-                <div style={{ flex: '1 1 60%', minWidth: 0 }}>
-                  <span style={{ color: COLORS.text, fontWeight: 600 }}>{job.title || job.service_type}</span>
-                  <span style={{ color: COLORS.textMuted, marginLeft: '10px', fontSize: '0.85rem' }}>{job.first_name} {job.last_name} — {formatDateEST(job.created_at)}</span>
+        ) : filtered.map(job => {
+          const addressParts = [job.address, job.city, job.state, job.zip_code].filter(Boolean);
+          const fullAddress = addressParts.join(', ');
+          const reps = (job.assigned_reps && job.assigned_reps.length > 0)
+            ? job.assigned_reps.map(r => `${r.rep_name}${r.trade ? ` (${r.trade})` : ''}`).join(', ')
+            : null;
+          return (
+            <div key={job.id}>
+              <JobWindow onClick={() => setExpandedId(expandedId === job.id ? null : job.id)}>
+                {/* Top row: service type + status/amount */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px', marginBottom: '8px' }}>
+                  <span style={{ color: COLORS.text, fontWeight: 700, fontSize: '1.05rem' }}>{job.service_type || job.title}</span>
+                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                    <span style={{ color: COLORS.textLight, fontSize: '0.9rem' }}>${parseFloat(job.total_amount || 0).toFixed(2)}</span>
+                    <StatusBadge status={job.status} />
+                  </div>
                 </div>
-                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                  <span style={{ color: COLORS.textLight }}>${parseFloat(job.total_amount || 0).toFixed(2)}</span>
-                  <StatusBadge status={job.status} />
+
+                {/* Info grid: customer, phone, start date, address, reps */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '6px 16px', fontSize: '0.88rem' }}>
+                  <div style={{ color: COLORS.textLight }}>
+                    <strong style={{ color: COLORS.textMuted }}>Customer:</strong> {job.first_name} {job.last_name}
+                  </div>
+                  <div style={{ color: COLORS.textLight }}>
+                    <strong style={{ color: COLORS.textMuted }}>Phone:</strong> {job.phone || <em style={{ color: COLORS.textMuted }}>N/A</em>}
+                  </div>
+                  <div style={{ color: COLORS.textLight }}>
+                    <strong style={{ color: COLORS.textMuted }}>Start Date:</strong>{' '}
+                    {job.scheduled_date ? formatDateEST(job.scheduled_date) : <em style={{ color: COLORS.textMuted }}>TBD</em>}
+                  </div>
+                  <div style={{ color: COLORS.textLight, gridColumn: '1 / -1' }}>
+                    <strong style={{ color: COLORS.textMuted }}>Address:</strong> {fullAddress || <em style={{ color: COLORS.textMuted }}>N/A</em>}
+                  </div>
+                  <div style={{ color: COLORS.textLight, gridColumn: '1 / -1', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <Briefcase size={13} style={{ color: COLORS.red }} />
+                    <strong style={{ color: COLORS.textMuted }}>Reps Assigned:</strong>
+                    <span>{reps || <em style={{ color: COLORS.textMuted }}>None</em>}</span>
+                  </div>
                 </div>
-              </div>
-              <div style={{ marginTop: '6px', color: COLORS.textMuted, fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-                <Briefcase size={13} style={{ color: COLORS.red }} />
-                <strong style={{ color: COLORS.textMuted }}>Reps Assigned:</strong>
-                <span style={{ color: COLORS.textLight }}>
-                  {(job.assigned_reps && job.assigned_reps.length > 0)
-                    ? job.assigned_reps.map(r => `${r.rep_name}${r.trade ? ` (${r.trade})` : ''}`).join(', ')
-                    : <em style={{ color: COLORS.textMuted }}>None</em>}
-                </span>
-              </div>
-            </JobWindow>
-            {expandedId === job.id && <AdminJobExpanded job={job} token={token} user={user} onRefresh={onRefresh} />}
-          </div>
-        ))}
+              </JobWindow>
+              {expandedId === job.id && <AdminJobExpanded job={job} token={token} user={user} onRefresh={onRefresh} />}
+            </div>
+          );
+        })}
       </div>
     </div>
   );
