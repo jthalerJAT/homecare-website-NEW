@@ -1698,29 +1698,53 @@ function AdminDashboard({ user, token, onLogout }) {
 function AdminTodaysJobs({ jobs, token, user, onRefresh }) {
   const [expandedId, setExpandedId] = useState(null);
   if (jobs.length === 0) return <div style={{ ...cardStyle, textAlign: 'center' }}><p style={{ color: COLORS.textMuted }}>No active jobs for today.</p></div>;
- 
+
   return (
     <div style={{ display: 'grid', gap: '12px' }}>
-      <div style={{ display: 'grid', gridTemplateColumns: '0.8fr 1.5fr 1fr 1fr 1.5fr 1fr', gap: '10px', padding: '0 20px', color: COLORS.textMuted, fontSize: '0.8rem', fontWeight: 600 }}>
-        <span>Date</span><span>Address</span><span>Customer</span><span>Contact</span><span>Description</span><span>Rep(s)</span>
-      </div>
-      {jobs.map(job => (
-        <div key={job.id}>
-          <JobWindow onClick={() => setExpandedId(expandedId === job.id ? null : job.id)}>
-            <div style={{ display: 'grid', gridTemplateColumns: '0.8fr 1.5fr 1fr 1fr 1.5fr 1fr', gap: '10px', alignItems: 'center', fontSize: '0.9rem' }}>
-              <span style={{ color: COLORS.textLight }}>{formatDateEST(job.scheduled_date || job.created_at)}</span>
-              <span style={{ color: COLORS.text, fontWeight: 600 }}>{job.address || 'N/A'}</span>
-              <span style={{ color: COLORS.textLight }}>{job.first_name} {job.last_name}</span>
-              <span style={{ color: COLORS.textLight }}>{job.phone || 'N/A'}</span>
-              <span style={{ color: COLORS.textMuted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{job.description}</span>
-              <span style={{ color: COLORS.textMuted }}>{job.assigned_reps ? job.assigned_reps.map(r => r.rep_name).join(', ') : 'None'}</span>
-            </div>
-          </JobWindow>
-          {expandedId === job.id && (
-            <AdminJobExpanded job={job} token={token} user={user} onRefresh={onRefresh} />
-          )}
-        </div>
-      ))}
+      {jobs.map(job => {
+        const addressParts = [job.address, job.city, job.state, job.zip_code].filter(Boolean);
+        const fullAddress = addressParts.join(', ');
+        const reps = (job.assigned_reps && job.assigned_reps.length > 0)
+          ? job.assigned_reps.map(r => `${r.rep_name}${r.trade ? ` (${r.trade})` : ''}`).join(', ')
+          : null;
+        return (
+          <div key={job.id}>
+            <JobWindow onClick={() => setExpandedId(expandedId === job.id ? null : job.id)}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px', marginBottom: '8px' }}>
+                <span style={{ color: COLORS.text, fontWeight: 700, fontSize: '1.05rem' }}>{job.service_type || job.title}</span>
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                  <span style={{ color: COLORS.textLight, fontSize: '0.9rem' }}>${parseFloat(job.total_amount || 0).toFixed(2)}</span>
+                  <StatusBadge status={job.status} />
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '6px 16px', fontSize: '0.88rem' }}>
+                <div style={{ color: COLORS.textLight }}>
+                  <strong style={{ color: COLORS.textMuted }}>Customer:</strong> {job.first_name} {job.last_name}
+                </div>
+                <div style={{ color: COLORS.textLight }}>
+                  <strong style={{ color: COLORS.textMuted }}>Phone:</strong> {job.phone || <em style={{ color: COLORS.textMuted }}>N/A</em>}
+                </div>
+                <div style={{ color: COLORS.textLight }}>
+                  <strong style={{ color: COLORS.textMuted }}>Start Date:</strong>{' '}
+                  {job.scheduled_date ? formatDateEST(job.scheduled_date) : <em style={{ color: COLORS.textMuted }}>TBD</em>}
+                </div>
+                <div style={{ color: COLORS.textLight, gridColumn: '1 / -1' }}>
+                  <strong style={{ color: COLORS.textMuted }}>Address:</strong> {fullAddress || <em style={{ color: COLORS.textMuted }}>N/A</em>}
+                </div>
+                <div style={{ color: COLORS.textLight, gridColumn: '1 / -1', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Briefcase size={13} style={{ color: COLORS.red }} />
+                  <strong style={{ color: COLORS.textMuted }}>Reps Assigned:</strong>
+                  <span>{reps || <em style={{ color: COLORS.textMuted }}>None</em>}</span>
+                </div>
+              </div>
+            </JobWindow>
+            {expandedId === job.id && (
+              <AdminJobExpanded job={job} token={token} user={user} onRefresh={onRefresh} />
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }
