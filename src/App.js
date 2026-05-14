@@ -753,13 +753,19 @@ function StatusBadge({ status }) {
 // ============================================
 // JOB WINDOW (reusable list item)
 // ============================================
-function JobWindow({ children, onClick, style = {} }) {
+function JobWindow({ children, onClick, expanded, style = {} }) {
+  const showChevron = !!onClick && typeof expanded === 'boolean';
   return (
     <div onClick={onClick}
-      style={{ ...cardStyle, cursor: onClick ? 'pointer' : 'default', border: `2px solid ${COLORS.borderRed}`, transition: 'all 0.2s ease', ...style }}
+      style={{ ...cardStyle, cursor: onClick ? 'pointer' : 'default', border: `2px solid ${COLORS.borderRed}`, transition: 'all 0.2s ease', position: 'relative', ...style }}
       onMouseEnter={(e) => { if (onClick) e.currentTarget.style.borderColor = COLORS.red; }}
       onMouseLeave={(e) => { if (onClick) e.currentTarget.style.borderColor = COLORS.borderRed; }}>
       {children}
+      {showChevron && (
+        <span aria-hidden="true" style={{ position: 'absolute', top: '50%', right: '10px', transform: 'translateY(-50%)', color: COLORS.textMuted, pointerEvents: 'none', display: 'flex', alignItems: 'center' }}>
+          {expanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+        </span>
+      )}
     </div>
   );
 }
@@ -906,7 +912,7 @@ function OpenQuotesTab({ quotes, token, user, onRefresh, goToSettings }) {
  
       {quotes.map(quote => (
         <div key={quote.id}>
-          <JobWindow onClick={() => setExpandedId(expandedId === quote.id ? null : quote.id)}>
+          <JobWindow expanded={expandedId === quote.id} onClick={() => setExpandedId(expandedId === quote.id ? null : quote.id)}>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 2fr 1fr', gap: '10px', alignItems: 'center' }}>
               <span style={{ color: COLORS.textLight }}>{formatDateEST(quote.created_at)}</span>
               <span style={{ color: COLORS.text, fontWeight: 600 }}>{quote.service_type}</span>
@@ -1012,7 +1018,7 @@ function OpenJobsTab({ projects, token, user, onRefresh, refreshUser }) {
         const details = projectDetails[project.id];
         return (
           <div key={project.id}>
-            <JobWindow onClick={() => handleExpand(project.id)}>
+            <JobWindow expanded={expandedId === project.id} onClick={() => handleExpand(project.id)}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 2fr 1fr', gap: '10px', alignItems: 'center' }}>
                 <span style={{ color: COLORS.textLight }}>{formatDateEST(project.created_at)}</span>
                 <span style={{ color: COLORS.text, fontWeight: 600 }}>{project.service_type || project.title}</span>
@@ -1180,7 +1186,7 @@ function PastJobsTab({ projects, token, user }) {
       </div>
       {projects.map(project => (
         <div key={project.id}>
-          <JobWindow onClick={() => setExpandedId(expandedId === project.id ? null : project.id)}>
+          <JobWindow expanded={expandedId === project.id} onClick={() => setExpandedId(expandedId === project.id ? null : project.id)}>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 2fr 1fr', gap: '10px', alignItems: 'center' }}>
               <span style={{ color: COLORS.textLight }}>{formatDateEST(project.closed_at || project.created_at)}</span>
               <span style={{ color: COLORS.text, fontWeight: 600 }}>{project.service_type || project.title}</span>
@@ -1872,7 +1878,7 @@ function AdminTodaysJobs({ jobs, token, user, onRefresh }) {
       <AdminJobsHeader />
       {jobs.map(job => (
         <div key={job.id}>
-          <JobWindow onClick={() => setExpandedId(expandedId === job.id ? null : job.id)}>
+          <JobWindow expanded={expandedId === job.id} onClick={() => setExpandedId(expandedId === job.id ? null : job.id)}>
             <AdminJobPreviewRow job={job} />
           </JobWindow>
           {expandedId === job.id && (
@@ -1917,7 +1923,7 @@ function AdminJobPreviewRow({ job }) {
 // ============================================
 // ADMIN: EXPANDED JOB VIEW
 // ============================================
-function AdminJobExpanded({ job, token, user, onRefresh }) {
+function AdminJobExpanded({ job, token, user, onRefresh, onCollapse }) {
   const [showChangeOrder, setShowChangeOrder] = useState(false);
   const [coDescription, setCoDescription] = useState('');
   const [coAmount, setCoAmount] = useState('');
@@ -2003,7 +2009,13 @@ function AdminJobExpanded({ job, token, user, onRefresh }) {
     });
 
   return (
-    <div style={{ ...cardStyle, marginTop: '5px', borderColor: COLORS.red }}>
+    <div style={{ ...cardStyle, marginTop: '5px', borderColor: COLORS.red, position: 'relative' }}>
+      {onCollapse && (
+        <button onClick={onCollapse} title="Collapse" aria-label="Collapse"
+          style={{ position: 'absolute', top: '8px', right: '8px', background: 'none', border: 'none', color: COLORS.textMuted, cursor: 'pointer', padding: '6px', borderRadius: '6px', display: 'flex', alignItems: 'center', zIndex: 1 }}>
+          <X size={18} />
+        </button>
+      )}
       {/* Action buttons */}
       <div style={{ display: 'flex', gap: '10px', marginBottom: '15px', flexWrap: 'wrap' }}>
         <button onClick={() => setShowChangeOrder(!showChangeOrder)} style={{ ...btnPrimary, padding: '8px 16px', fontSize: '0.9rem' }}>
@@ -2335,7 +2347,7 @@ function AdminQuotesTab({ quotes, token, onRefresh, user }) {
           </div>
           {filtered.map(quote => (
           <div key={quote.id}>
-            <JobWindow onClick={() => setExpandedId(expandedId === quote.id ? null : quote.id)}>
+            <JobWindow expanded={expandedId === quote.id} onClick={() => setExpandedId(expandedId === quote.id ? null : quote.id)}>
               <div style={{ display: 'grid', gridTemplateColumns: '0.9fr 1.1fr 1fr 1fr 1.8fr 0.9fr', gap: '10px', alignItems: 'center' }}>
                 {(() => { const cell = { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: '0.88rem' }; return (<>
                   <span style={{ ...cell, color: COLORS.textLight }}>{formatDateEST(quote.created_at)}</span>
@@ -2355,7 +2367,10 @@ function AdminQuotesTab({ quotes, token, onRefresh, user }) {
                     <h3 style={{ color: COLORS.red, fontSize: '1.1rem', fontWeight: 600, fontFamily: '"Oswald", sans-serif' }}>{quote.service_type || quote.title}</h3>
                     <p style={{ color: COLORS.textMuted, fontSize: '0.85rem' }}>{formatDateTimeEST(quote.created_at)}</p>
                   </div>
-                  <button onClick={() => setShowConfirmDelete(quote.id)} style={{ background: 'none', border: 'none', color: COLORS.textMuted, cursor: 'pointer' }}><Trash2 size={16} /></button>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <button onClick={() => setExpandedId(null)} title="Collapse" aria-label="Collapse" style={{ background: 'none', border: 'none', color: COLORS.textMuted, cursor: 'pointer' }}><X size={16} /></button>
+                    <button onClick={() => setShowConfirmDelete(quote.id)} style={{ background: 'none', border: 'none', color: COLORS.textMuted, cursor: 'pointer' }}><Trash2 size={16} /></button>
+                  </div>
                 </div>
 
                 {showConfirmDelete === quote.id && <ConfirmDialog message="Delete this quote request?" onConfirm={async () => { await api.adminDeleteQuote(quote.id, token); setShowConfirmDelete(null); onRefresh(); }} onCancel={() => setShowConfirmDelete(null)} />}
@@ -2465,10 +2480,10 @@ function AdminProjectsTab({ projects, token, user, onRefresh }) {
             <AdminJobsHeader />
             {filtered.map(job => (
               <div key={job.id}>
-                <JobWindow onClick={() => setExpandedId(expandedId === job.id ? null : job.id)}>
+                <JobWindow expanded={expandedId === job.id} onClick={() => setExpandedId(expandedId === job.id ? null : job.id)}>
                   <AdminJobPreviewRow job={job} />
                 </JobWindow>
-                {expandedId === job.id && <AdminJobExpanded job={job} token={token} user={user} onRefresh={onRefresh} />}
+                {expandedId === job.id && <AdminJobExpanded job={job} token={token} user={user} onRefresh={onRefresh} onCollapse={() => setExpandedId(null)} />}
               </div>
             ))}
           </>
@@ -2788,7 +2803,7 @@ function AdminAdminsTab({ token, currentUser }) {
           const isSelf = a.id === currentUser?.id;
           return (
             <div key={a.id}>
-              <JobWindow onClick={() => setExpandedId(expandedId === a.id ? null : a.id)}>
+              <JobWindow expanded={expandedId === a.id} onClick={() => setExpandedId(expandedId === a.id ? null : a.id)}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
                   <div style={{ minWidth: 0 }}>
                     <span style={{ color: COLORS.text, fontWeight: 600 }}>{a.first_name} {a.last_name}</span>
@@ -2895,7 +2910,7 @@ function RepPortal({ user, token, onLogout }) {
         </div>
         {jobs.map(job => (
           <div key={job.id}>
-            <JobWindow onClick={() => setExpandedId(expandedId === job.id ? null : job.id)}>
+            <JobWindow expanded={expandedId === job.id} onClick={() => setExpandedId(expandedId === job.id ? null : job.id)}>
               <div style={{ display: 'grid', gridTemplateColumns: '0.8fr 1.5fr 1fr 1fr', gap: '10px', alignItems: 'center', fontSize: '0.9rem' }}>
                 <span style={{ color: COLORS.textLight }}>{formatDateEST(job.scheduled_date || job.created_at)}</span>
                 <span style={{ color: COLORS.text, fontWeight: 600 }}>{job.address}</span>
