@@ -168,6 +168,9 @@ const api = {
   adminGetProjects: async (token) => {
     const r = await fetch(`${API_URL}/admin/projects`, { headers: { 'Authorization': `Bearer ${token}` } }); return r.json();
   },
+  adminGetProjectDetail: async (projectId, token) => {
+    const r = await fetch(`${API_URL}/admin/projects/${projectId}/detail`, { headers: { 'Authorization': `Bearer ${token}` } }); return r.json();
+  },
   adminGetTodaysJobs: async (token) => {
     const r = await fetch(`${API_URL}/admin/todays-jobs`, { headers: { 'Authorization': `Bearer ${token}` } }); return r.json();
   },
@@ -1761,8 +1764,8 @@ function AdminDashboard({ user, token, onLogout }) {
   const [isLoading, setIsLoading] = useState(true);
   const [showNewChangeOrder, setShowNewChangeOrder] = useState(false);
 
-  const fetchData = useCallback(async () => {
-    setIsLoading(true);
+  const fetchData = useCallback(async ({ silent = false } = {}) => {
+    if (!silent) setIsLoading(true);
     try {
       const [quotesRes, projectsRes, todaysRes] = await Promise.all([
         api.adminGetQuotes(token), api.adminGetProjects(token), api.adminGetTodaysJobs(token)
@@ -1771,10 +1774,23 @@ function AdminDashboard({ user, token, onLogout }) {
       setProjects(projectsRes.projects || []);
       setTodaysJobs(todaysRes.projects || []);
     } catch (e) { console.error('Error fetching admin data:', e); }
-    finally { setIsLoading(false); }
+    finally { if (!silent) setIsLoading(false); }
   }, [token]);
 
-  useEffect(() => { fetchData(); }, [fetchData]);
+  useEffect(() => {
+    fetchData();
+    // Poll every 30s while the tab is visible, and refetch immediately when
+    // the user returns to the tab.
+    const interval = setInterval(() => {
+      if (document.visibilityState === 'visible') fetchData({ silent: true });
+    }, 30000);
+    const onVisible = () => { if (document.visibilityState === 'visible') fetchData({ silent: true }); };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, [fetchData]);
  
   const tabs = [
     { key: 'todays-jobs', label: `Today's Jobs (${todaysJobs.length})` },
@@ -1914,6 +1930,14 @@ function AdminJobExpanded({ job, token, user, onRefresh }) {
   const [repFilter, setRepFilter] = useState('');
   const [confirmRemoveRep, setConfirmRemoveRep] = useState(null);
 
+  // Full project detail (original quote, sender, change orders, payments)
+  const [detail, setDetail] = useState(null);
+  const loadDetail = useCallback(async () => {
+    const r = await api.adminGetProjectDetail(job.id, token);
+    if (r && r.project) setDetail(r);
+  }, [job.id, token]);
+  useEffect(() => { loadDetail(); }, [loadDetail]);
+
   const loadReps = useCallback(async () => {
     const [assigned, all] = await Promise.all([
       api.adminGetProjectReps(job.id, token),
@@ -1923,7 +1947,7 @@ function AdminJobExpanded({ job, token, user, onRefresh }) {
     setAvailableReps(all.staff || []);
   }, [job.id, token]);
 
-  useEffect(() => { if (showRepAssign) loadReps(); }, [showRepAssign, loadReps]);
+  useEffect(() => { loadReps(); }, [loadReps]);
 
   const handleCreateChangeOrder = async () => {
     if (!coDescription || !coAmount) { alert('Description and amount required'); return; }
@@ -1931,6 +1955,7 @@ function AdminJobExpanded({ job, token, user, onRefresh }) {
     setShowChangeOrder(false); setCoDescription(''); setCoAmount('');
     alert('Change order created and customer notified.');
     onRefresh();
+    loadDetail();
   };
 
   const handleMarkComplete = async () => {
@@ -1938,6 +1963,7 @@ function AdminJobExpanded({ job, token, user, onRefresh }) {
     await api.adminMarkComplete(job.id, token);
     alert('Job marked complete. Customer notified.');
     onRefresh();
+    loadDetail();
   };
 
   const handleDelete = async () => {
@@ -1953,6 +1979,7 @@ function AdminJobExpanded({ job, token, user, onRefresh }) {
     setRepFilter('');
     loadReps();
     onRefresh();
+    loadDetail();
   };
 
   const handleRemoveRep = async (assignmentId) => {
@@ -1960,6 +1987,7 @@ function AdminJobExpanded({ job, token, user, onRefresh }) {
     setConfirmRemoveRep(null);
     loadReps();
     onRefresh();
+    loadDetail();
   };
 
   const assignedRepIds = new Set(assignedReps.map(r => r.rep_id || r.id));
@@ -1996,6 +2024,75 @@ function AdminJobExpanded({ job, token, user, onRefresh }) {
 
       {showConfirmDelete && <ConfirmDialog message="Are you sure you want to delete this job?" onConfirm={handleDelete} onCancel={() => setShowConfirmDelete(false)} />}
       {confirmRemoveRep && <ConfirmDialog message="Are you sure you want to remove this rep?" onConfirm={() => handleRemoveRep(confirmRemoveRep)} onCancel={() => setConfirmRemoveRep(null)} />}
+
+      {/* Original quote that produced this project */}
+      {detail?.quote && (
+        <div style={{ background: 'rgba(10,10,10,0.5)', borderRadius: '10px', padding: '12px 15px', marginBottom: '15px', border: `1px solid ${COLORS.borderRed}` }}>
+          <h4 style={{ color: COLORS.red, marginBottom: '8px', fontSize: '0.95rem' }}>Original Quote</h4>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '6px', fontSize: '0.9rem' }}>
+            <p style={{ color: COLORS.textLight }}><strong style={{ color: COLORS.textMuted }}>Amount:</strong> ${parseFloat(detail.quote.amount || 0).toFixed(2)}</p>
+            <p style={{ color: COLORS.textLight }}><strong style={{ color: COLORS.textMuted }}>Proposed start:</strong> {detail.quote.proposed_start_date ? formatDateEST(detail.quote.proposed_start_date) : 'TBD'}</p>
+            <p style={{ color: COLORS.textLight }}><strong style={{ color: COLORS.textMuted }}>Work time:</strong> {detail.quote.proposed_work_time || detail.quote.estimated_duration || 'TBD'}</p>
+            <p style={{ color: COLORS.textLight }}><strong style={{ color: COLORS.textMuted }}>Sent:</strong> {detail.quote.created_at ? formatDateTimeEST(detail.quote.created_at) : '—'}</p>
+            <p style={{ color: COLORS.textLight }}><strong style={{ color: COLORS.textMuted }}>Sent by:</strong> {detail.quote.sender_first_name ? `${detail.quote.sender_first_name} ${detail.quote.sender_last_name || ''}`.trim() : 'unknown'}</p>
+            <p style={{ color: COLORS.textLight }}><strong style={{ color: COLORS.textMuted }}>Status:</strong> {detail.quote.status}</p>
+          </div>
+          {detail.quote.scope_of_work && (
+            <p style={{ color: COLORS.textLight, marginTop: '8px', fontSize: '0.9rem', whiteSpace: 'pre-wrap' }}>
+              <strong style={{ color: COLORS.textMuted }}>Scope of work:</strong> {detail.quote.scope_of_work}
+            </p>
+          )}
+          {detail.quoteRequest?.description && (
+            <p style={{ color: COLORS.textLight, marginTop: '6px', fontSize: '0.85rem', whiteSpace: 'pre-wrap' }}>
+              <strong style={{ color: COLORS.textMuted }}>Customer request:</strong> {detail.quoteRequest.description}
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* Reps currently assigned (always visible — separate from the assign UI) */}
+      <div style={{ background: 'rgba(10,10,10,0.5)', borderRadius: '10px', padding: '12px 15px', marginBottom: '15px', border: `1px solid ${COLORS.border}` }}>
+        <h4 style={{ color: COLORS.red, marginBottom: '8px', fontSize: '0.95rem' }}>Workers on this job</h4>
+        {assignedReps.length === 0 ? (
+          <p style={{ color: COLORS.textMuted, fontStyle: 'italic', fontSize: '0.9rem', margin: 0 }}>No reps assigned yet — use "Change Rep Assignment" above.</p>
+        ) : (
+          <div style={{ display: 'grid', gap: '6px' }}>
+            {assignedReps.map(r => {
+              const isAdmin = ['admin', 'master_admin'].includes(r.user_type);
+              return (
+                <div key={r.assignment_id || r.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.9rem' }}>
+                  <span style={{ padding: '0.15rem 0.5rem', borderRadius: '999px', fontSize: '0.7rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', background: isAdmin ? 'rgba(220,38,38,0.15)' : 'rgba(59,130,246,0.12)', color: isAdmin ? COLORS.red : COLORS.blue, border: `1px solid ${isAdmin ? 'rgba(220,38,38,0.4)' : 'rgba(59,130,246,0.35)'}` }}>
+                    {isAdmin ? 'Foreman' : 'Rep'}
+                  </span>
+                  <span style={{ color: COLORS.text, fontWeight: 600 }}>{r.first_name} {r.last_name}</span>
+                  <span style={{ color: COLORS.textMuted, fontSize: '0.85rem' }}>— {r.trade || 'No trade'}{r.phone ? ` · ${r.phone}` : ''}{r.email ? ` · ${r.email}` : ''}</span>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* Change orders on this project */}
+      {detail?.changeOrders?.length > 0 && (
+        <div style={{ background: 'rgba(10,10,10,0.5)', borderRadius: '10px', padding: '12px 15px', marginBottom: '15px', border: `1px solid ${COLORS.border}` }}>
+          <h4 style={{ color: COLORS.red, marginBottom: '8px', fontSize: '0.95rem' }}>Change Orders ({detail.changeOrders.length})</h4>
+          <div style={{ display: 'grid', gap: '8px' }}>
+            {detail.changeOrders.map(co => (
+              <div key={co.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', gap: '10px', padding: '8px 10px', background: 'rgba(255,255,255,0.04)', borderRadius: '8px', fontSize: '0.9rem' }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{ color: COLORS.textLight, margin: 0, whiteSpace: 'pre-wrap' }}>{co.description}</p>
+                  <p style={{ color: COLORS.textMuted, margin: '4px 0 0', fontSize: '0.8rem' }}>Created {formatDateTimeEST(co.created_at)}</p>
+                </div>
+                <div style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
+                  <p style={{ color: COLORS.text, fontWeight: 700, margin: 0 }}>${parseFloat(co.amount || 0).toFixed(2)}</p>
+                  <StatusBadge status={co.status} />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Change Order Form */}
       {showChangeOrder && (
@@ -2271,6 +2368,25 @@ function AdminQuotesTab({ quotes, token, onRefresh, user }) {
                   </div>
                   <p style={{ color: COLORS.textLight, marginTop: '6px', fontSize: '0.9rem' }}><strong style={{ color: COLORS.textMuted }}>Description:</strong> {quote.description}</p>
                 </div>
+
+                {/* Sent quote summary — surfaced once the quote has been sent */}
+                {(quote.quote_id || ['quoted', 'accepted', 'declined'].includes(quote.status)) && (
+                  <div style={{ background: `${COLORS.red}08`, border: `1px solid ${COLORS.borderRed}`, borderRadius: '10px', padding: '12px', marginBottom: '12px' }}>
+                    <h4 style={{ color: COLORS.red, marginBottom: '8px', fontSize: '0.95rem' }}>Quote sent</h4>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '6px', fontSize: '0.9rem' }}>
+                      <p style={{ color: COLORS.textLight }}><strong style={{ color: COLORS.textMuted }}>Amount:</strong> {quote.quote_amount != null ? `$${parseFloat(quote.quote_amount).toFixed(2)}` : '—'}</p>
+                      <p style={{ color: COLORS.textLight }}><strong style={{ color: COLORS.textMuted }}>Proposed start:</strong> {quote.proposed_start_date ? formatDateEST(quote.proposed_start_date) : 'TBD'}</p>
+                      <p style={{ color: COLORS.textLight }}><strong style={{ color: COLORS.textMuted }}>Work time:</strong> {quote.proposed_work_time || quote.estimated_duration || 'TBD'}</p>
+                      <p style={{ color: COLORS.textLight }}><strong style={{ color: COLORS.textMuted }}>Sent:</strong> {quote.quote_sent_at ? formatDateTimeEST(quote.quote_sent_at) : '—'}</p>
+                      <p style={{ color: COLORS.textLight }}><strong style={{ color: COLORS.textMuted }}>Sent by:</strong> {quote.quote_sender_first_name ? `${quote.quote_sender_first_name} ${quote.quote_sender_last_name || ''}`.trim() : 'unknown'}</p>
+                    </div>
+                    {quote.scope_of_work && (
+                      <p style={{ color: COLORS.textLight, marginTop: '8px', fontSize: '0.9rem', whiteSpace: 'pre-wrap' }}>
+                        <strong style={{ color: COLORS.textMuted }}>Scope of work:</strong> {quote.scope_of_work}
+                      </p>
+                    )}
+                  </div>
+                )}
 
                 {quote.status === 'pending' && (
                   selectedQuote === quote.id ? (
