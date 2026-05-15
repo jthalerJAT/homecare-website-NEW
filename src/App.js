@@ -68,6 +68,7 @@ const formatTimeEST = (dateStr) => {
   return new Date(dateStr).toLocaleTimeString('en-US', { timeZone: 'America/New_York', hour: '2-digit', minute: '2-digit' });
 };
 const formatDateTimeEST = (dateStr) => `${formatDateEST(dateStr)} ${formatTimeEST(dateStr)}`;
+const formatMoney = (n) => parseFloat(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
  
 // ============================================
 // API HELPER
@@ -724,7 +725,7 @@ function PaymentFormInner({ projectId, paymentType, amount, token, onSuccess, on
   return (
     <div style={{ ...cardStyle, border: `1px solid ${COLORS.borderRed}` }}>
       <h4 style={{ color: COLORS.red, marginBottom: '15px' }}>
-        {paymentType === 'deposit' ? 'Pay 20% Deposit' : 'Make Final Payment'}: ${parseFloat(amount).toFixed(2)}
+        {paymentType === 'deposit' ? 'Pay 20% Deposit' : 'Make Final Payment'}: ${formatMoney(amount)}
       </h4>
       {error && <div style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: '10px', padding: '10px', marginBottom: '15px', color: COLORS.redLight }}>{error}</div>}
       <div style={{ background: COLORS.inputBg, border: `1px solid ${COLORS.borderRed}`, borderRadius: '10px', padding: '14px', marginBottom: '15px' }}>
@@ -733,7 +734,7 @@ function PaymentFormInner({ projectId, paymentType, amount, token, onSuccess, on
       <div style={{ display: 'flex', gap: '10px' }}>
         <button onClick={handleSubmit} disabled={isProcessing || !stripe || !clientSecret}
           style={{ ...btnPrimary, flex: 1, opacity: isProcessing ? 0.6 : 1 }}>
-          {isProcessing ? 'Processing...' : `Pay $${parseFloat(amount).toFixed(2)}`}
+          {isProcessing ? 'Processing...' : `Pay $${formatMoney(amount)}`}
         </button>
         <button onClick={onCancel} style={btnSecondary}>Cancel</button>
       </div>
@@ -974,7 +975,7 @@ function OpenQuotesTab({ quotes, token, user, onRefresh, goToSettings }) {
                 <div style={{ background: 'rgba(220,38,38,0.05)', borderRadius: '10px', padding: '15px', marginBottom: '15px', border: `1px solid ${COLORS.borderRed}` }}>
                   <h4 style={{ color: COLORS.red, fontSize: '0.85rem', marginBottom: '10px' }}>QUOTE DETAILS</h4>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '8px' }}>
-                    <p style={{ color: COLORS.text, fontSize: '1.2rem' }}><strong>Proposed Cost:</strong> ${parseFloat(quote.quote_amount).toFixed(2)}</p>
+                    <p style={{ color: COLORS.text, fontSize: '1.2rem' }}><strong>Proposed Cost:</strong> ${formatMoney(quote.quote_amount)}</p>
                     <p style={{ color: COLORS.textLight }}><strong style={{ color: COLORS.textMuted }}>Proposed Start Date:</strong> {quote.proposed_start_date ? formatDateEST(quote.proposed_start_date) : 'TBD'}</p>
                     <p style={{ color: COLORS.textLight }}><strong style={{ color: COLORS.textMuted }}>Work Time:</strong> {quote.proposed_work_time || quote.estimated_duration || 'TBD'}</p>
                   </div>
@@ -1070,15 +1071,15 @@ function OpenJobsTab({ projects, token, user, onRefresh, refreshUser }) {
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '15px', marginTop: '20px' }}>
                   <div style={{ background: 'rgba(10,10,10,0.5)', borderRadius: '10px', padding: '12px', textAlign: 'center' }}>
                     <p style={{ color: COLORS.textMuted, fontSize: '0.8rem' }}>Quoted Amount</p>
-                    <p style={{ color: COLORS.text, fontSize: '1.3rem', fontWeight: 700 }}>${parseFloat(project.quoted_amount || 0).toFixed(2)}</p>
+                    <p style={{ color: COLORS.text, fontSize: '1.3rem', fontWeight: 700 }}>${formatMoney(project.quoted_amount || 0)}</p>
                   </div>
                   <div style={{ background: 'rgba(10,10,10,0.5)', borderRadius: '10px', padding: '12px', textAlign: 'center' }}>
                     <p style={{ color: COLORS.textMuted, fontSize: '0.8rem' }}>Change Order Amount</p>
-                    <p style={{ color: COLORS.yellow, fontSize: '1.3rem', fontWeight: 700 }}>${parseFloat(project.change_order_total || 0).toFixed(2)}</p>
+                    <p style={{ color: COLORS.yellow, fontSize: '1.3rem', fontWeight: 700 }}>${formatMoney(project.change_order_total || 0)}</p>
                   </div>
                   <div style={{ background: 'rgba(220,38,38,0.08)', borderRadius: '10px', padding: '12px', textAlign: 'center', border: `1px solid ${COLORS.borderRed}` }}>
                     <p style={{ color: COLORS.textMuted, fontSize: '0.8rem' }}>Total Amount</p>
-                    <p style={{ color: COLORS.red, fontSize: '1.3rem', fontWeight: 700 }}>${parseFloat(project.total_amount || 0).toFixed(2)}</p>
+                    <p style={{ color: COLORS.red, fontSize: '1.3rem', fontWeight: 700 }}>${formatMoney(project.total_amount || 0)}</p>
                   </div>
                 </div>
  
@@ -1099,7 +1100,7 @@ function OpenJobsTab({ projects, token, user, onRefresh, refreshUser }) {
                     ) : (
                       <button onClick={() => setShowPayment({ projectId: project.id, type: 'deposit' })}
                         style={{ ...btnPrimary, width: '100%' }}>
-                        Pay Deposit (${parseFloat(project.deposit_amount || 0).toFixed(2)})
+                        Pay Deposit (${formatMoney(project.deposit_amount || 0)})
                       </button>
                     )}
                   </div>
@@ -1121,7 +1122,7 @@ function OpenJobsTab({ projects, token, user, onRefresh, refreshUser }) {
                           <StatusBadge status={co.status} />
                         </div>
                         <p style={{ color: COLORS.textLight, marginBottom: '5px' }}>{co.description}</p>
-                        <p style={{ color: COLORS.text, fontWeight: 700 }}>${parseFloat(co.amount).toFixed(2)}</p>
+                        <p style={{ color: COLORS.text, fontWeight: 700 }}>${formatMoney(co.amount)}</p>
                         {co.status === 'pending' && (
                           <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
                             <button onClick={async () => { await api.acceptChangeOrder(co.id, token); loadProjectDetails(project.id); onRefresh(); }}
@@ -1160,16 +1161,16 @@ function OpenJobsTab({ projects, token, user, onRefresh, refreshUser }) {
                       <div style={{ display: 'grid', gap: '5px' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                           <span style={{ color: COLORS.textMuted }}>Total Amount:</span>
-                          <span style={{ color: COLORS.text }}>${parseFloat(project.total_amount || 0).toFixed(2)}</span>
+                          <span style={{ color: COLORS.text }}>${formatMoney(project.total_amount || 0)}</span>
                         </div>
                         <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                           <span style={{ color: COLORS.textMuted }}>Deposit Paid:</span>
-                          <span style={{ color: COLORS.green }}>-${parseFloat(project.deposit_amount || 0).toFixed(2)}</span>
+                          <span style={{ color: COLORS.green }}>-${formatMoney(project.deposit_amount || 0)}</span>
                         </div>
                         <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: '8px', borderTop: `1px solid ${COLORS.border}` }}>
                           <span style={{ color: COLORS.text, fontWeight: 700 }}>Balance Due:</span>
                           <span style={{ color: COLORS.red, fontWeight: 700, fontSize: '1.2rem' }}>
-                            ${(parseFloat(project.total_amount || 0) - parseFloat(project.deposit_amount || 0)).toFixed(2)}
+                            ${formatMoney(parseFloat(project.total_amount || 0) - parseFloat(project.deposit_amount || 0))}
                           </span>
                         </div>
                       </div>
@@ -1231,7 +1232,7 @@ function PastJobsTab({ projects, token, user }) {
             <div style={{ ...cardStyle, marginTop: '5px' }}>
               <h3 style={{ color: COLORS.text, marginBottom: '10px' }}>{project.title}</h3>
               <p style={{ color: COLORS.textMuted, marginBottom: '10px' }}>{project.description}</p>
-              <p style={{ color: COLORS.textLight }}><strong>Total Paid:</strong> ${parseFloat(project.total_amount || 0).toFixed(2)}</p>
+              <p style={{ color: COLORS.textLight }}><strong>Total Paid:</strong> ${formatMoney(project.total_amount || 0)}</p>
               <p style={{ color: COLORS.textLight }}><strong>Completed:</strong> {formatDateEST(project.completed_at)}</p>
 
               {/* Read-only messaging history */}
@@ -1946,7 +1947,7 @@ function AdminJobPreviewRow({ job }) {
       <span style={{ ...cellStyle, color: COLORS.textLight }}>{job.phone || '—'}</span>
       <span style={{ ...cellStyle, color: COLORS.textLight }} title={fullAddress}>{fullAddress || '—'}</span>
       <span style={{ ...cellStyle, color: COLORS.textLight }} title={reps}>{reps}</span>
-      <span style={{ ...cellStyle, color: COLORS.textLight }}>${parseFloat(job.total_amount || 0).toFixed(2)}</span>
+      <span style={{ ...cellStyle, color: COLORS.textLight }}>${formatMoney(job.total_amount || 0)}</span>
       <span><StatusBadge status={job.status} /></span>
     </div>
   );
@@ -2099,7 +2100,7 @@ function AdminJobExpanded({ job, token, user, onRefresh, onCollapse }) {
         <div style={{ background: 'rgba(10,10,10,0.5)', borderRadius: '10px', padding: '12px 15px', marginBottom: '15px', border: `1px solid ${COLORS.borderRed}` }}>
           <h4 style={{ color: COLORS.red, marginBottom: '8px', fontSize: '0.95rem' }}>Original Quote</h4>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '6px', fontSize: '0.9rem' }}>
-            <p style={{ color: COLORS.textLight }}><strong style={{ color: COLORS.textMuted }}>Amount:</strong> ${parseFloat(detail.quote.amount || 0).toFixed(2)}</p>
+            <p style={{ color: COLORS.textLight }}><strong style={{ color: COLORS.textMuted }}>Amount:</strong> ${formatMoney(detail.quote.amount || 0)}</p>
             <p style={{ color: COLORS.textLight }}><strong style={{ color: COLORS.textMuted }}>Proposed start:</strong> {detail.quote.proposed_start_date ? formatDateEST(detail.quote.proposed_start_date) : 'TBD'}</p>
             <p style={{ color: COLORS.textLight }}><strong style={{ color: COLORS.textMuted }}>Work time:</strong> {detail.quote.proposed_work_time || detail.quote.estimated_duration || 'TBD'}</p>
             <p style={{ color: COLORS.textLight }}><strong style={{ color: COLORS.textMuted }}>Sent:</strong> {detail.quote.created_at ? formatDateTimeEST(detail.quote.created_at) : '—'}</p>
@@ -2154,7 +2155,7 @@ function AdminJobExpanded({ job, token, user, onRefresh, onCollapse }) {
                   <p style={{ color: COLORS.textMuted, margin: '4px 0 0', fontSize: '0.8rem' }}>Created {formatDateTimeEST(co.created_at)}</p>
                 </div>
                 <div style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
-                  <p style={{ color: COLORS.text, fontWeight: 700, margin: 0 }}>${parseFloat(co.amount || 0).toFixed(2)}</p>
+                  <p style={{ color: COLORS.text, fontWeight: 700, margin: 0 }}>${formatMoney(co.amount || 0)}</p>
                   <StatusBadge status={co.status} />
                 </div>
               </div>
@@ -2195,7 +2196,7 @@ function AdminJobExpanded({ job, token, user, onRefresh, onCollapse }) {
               <div key={pmt.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px', padding: '8px 10px', background: 'rgba(255,255,255,0.04)', borderRadius: '8px', fontSize: '0.88rem' }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <p style={{ color: COLORS.text, margin: 0, fontWeight: 600, textTransform: 'capitalize' }}>
-                    {pmt.payment_type} payment — ${parseFloat(pmt.amount || 0).toFixed(2)}
+                    {pmt.payment_type} payment — ${formatMoney(pmt.amount || 0)}
                   </p>
                   <p style={{ color: COLORS.textMuted, margin: '2px 0 0', fontSize: '0.78rem' }}>
                     {pmt.status === 'succeeded' && pmt.paid_at
@@ -2315,7 +2316,7 @@ function AdminJobExpanded({ job, token, user, onRefresh, onCollapse }) {
         <p style={{ color: COLORS.textLight }}><strong style={{ color: COLORS.textMuted }}>Customer:</strong> {job.first_name} {job.last_name}</p>
         <p style={{ color: COLORS.textLight }}><strong style={{ color: COLORS.textMuted }}>Email:</strong> {job.email}</p>
         <p style={{ color: COLORS.textLight }}><strong style={{ color: COLORS.textMuted }}>Phone:</strong> {job.phone}</p>
-        <p style={{ color: COLORS.textLight }}><strong style={{ color: COLORS.textMuted }}>Amount:</strong> ${parseFloat(job.total_amount || 0).toFixed(2)}</p>
+        <p style={{ color: COLORS.textLight }}><strong style={{ color: COLORS.textMuted }}>Amount:</strong> ${formatMoney(job.total_amount || 0)}</p>
         <p style={{ color: COLORS.textLight }}><strong style={{ color: COLORS.textMuted }}>Status:</strong> <StatusBadge status={job.status} /></p>
       </div>
 
@@ -2403,7 +2404,7 @@ function AdminStandaloneChangeOrder({ token, projects, onClose, onCreated }) {
             <select value={selectedProjectId} onChange={(e) => setSelectedProjectId(e.target.value)} style={{ ...inputStyle, appearance: 'auto', marginBottom: '12px' }}>
               <option value="">Choose a project...</option>
               {customerProjects.length === 0 ? <option disabled>This customer has no open jobs</option> :
-                customerProjects.map(p => <option key={p.id} value={p.id}>{p.service_type || p.title || `Project #${p.id}`} — ${parseFloat(p.total_amount || 0).toFixed(2)}</option>)
+                customerProjects.map(p => <option key={p.id} value={p.id}>{p.service_type || p.title || `Project #${p.id}`} — ${formatMoney(p.total_amount || 0)}</option>)
               }
             </select>
 
@@ -2521,7 +2522,7 @@ function AdminQuotesTab({ quotes, token, onRefresh, user }) {
                   <div style={{ background: `${COLORS.red}08`, border: `1px solid ${COLORS.borderRed}`, borderRadius: '10px', padding: '12px', marginBottom: '12px' }}>
                     <h4 style={{ color: COLORS.red, marginBottom: '8px', fontSize: '0.95rem' }}>Quote sent</h4>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '6px', fontSize: '0.9rem' }}>
-                      <p style={{ color: COLORS.textLight }}><strong style={{ color: COLORS.textMuted }}>Amount:</strong> {quote.quote_amount != null ? `$${parseFloat(quote.quote_amount).toFixed(2)}` : '—'}</p>
+                      <p style={{ color: COLORS.textLight }}><strong style={{ color: COLORS.textMuted }}>Amount:</strong> {quote.quote_amount != null ? `$${formatMoney(quote.quote_amount)}` : '—'}</p>
                       <p style={{ color: COLORS.textLight }}><strong style={{ color: COLORS.textMuted }}>Proposed start:</strong> {quote.proposed_start_date ? formatDateEST(quote.proposed_start_date) : 'TBD'}</p>
                       <p style={{ color: COLORS.textLight }}><strong style={{ color: COLORS.textMuted }}>Work time:</strong> {quote.proposed_work_time || quote.estimated_duration || 'TBD'}</p>
                       <p style={{ color: COLORS.textLight }}><strong style={{ color: COLORS.textMuted }}>Sent:</strong> {quote.quote_sent_at ? formatDateTimeEST(quote.quote_sent_at) : '—'}</p>
