@@ -2028,8 +2028,9 @@ function AdminJobExpanded({ job, token, user, onRefresh, onCollapse }) {
   };
 
   const handleDelete = async () => {
-    await api.adminDeleteProject(job.id, token);
+    const r = await api.adminDeleteProject(job.id, token);
     setShowConfirmDelete(false);
+    if (r && r.error) { alert(r.error); return; }
     onRefresh();
   };
 
@@ -2506,7 +2507,12 @@ function AdminQuotesTab({ quotes, token, onRefresh, user }) {
                   </div>
                 </div>
 
-                {showConfirmDelete === quote.id && <ConfirmDialog message="Delete this quote request?" onConfirm={async () => { await api.adminDeleteQuote(quote.id, token); setShowConfirmDelete(null); onRefresh(); }} onCancel={() => setShowConfirmDelete(null)} />}
+                {showConfirmDelete === quote.id && <ConfirmDialog message="Delete this quote request? Any downstream project will also be deleted (unless a payment has already been collected)." onConfirm={async () => {
+                  const r = await api.adminDeleteQuote(quote.id, token);
+                  setShowConfirmDelete(null);
+                  if (r && r.error) { alert(r.error); return; }
+                  onRefresh();
+                }} onCancel={() => setShowConfirmDelete(null)} />}
 
                 <div style={{ background: 'rgba(10,10,10,0.5)', borderRadius: '8px', padding: '10px', marginBottom: '12px' }}>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '6px', fontSize: '0.9rem' }}>
