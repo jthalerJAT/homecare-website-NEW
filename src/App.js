@@ -3104,7 +3104,7 @@ function HomePage({ setCurrentPage }) {
             animationDelay: '0.3s',
             opacity: 0
           }}>
-            Expert contractors. Transparent pricing. Quality guaranteed. From repairs to renovations, we've got your home covered.
+            Expert contractors. Transparent pricing. Quality guaranteed. From small handyman tasks to large repairs and renovations, we've got your home covered.
           </p>
           <div className="animate-in" style={{
             display: 'flex',
