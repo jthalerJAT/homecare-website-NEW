@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Calendar, CheckCircle, DollarSign, Menu, X, ArrowRight, Star, Phone, Mail, Clock, Plus, Send, ChevronDown, ChevronUp, Search, Settings, FileText, Briefcase, MessageSquare, Trash2, AlertCircle } from 'lucide-react';
+import { Calendar, CheckCircle, DollarSign, Menu, X, ArrowRight, Star, Phone, Mail, Clock, Plus, Send, ChevronDown, ChevronUp, Search, Settings, FileText, Briefcase, MessageSquare, Trash2, AlertCircle, RefreshCw } from 'lucide-react';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
  
@@ -170,6 +170,9 @@ const api = {
   },
   adminGetProjectDetail: async (projectId, token) => {
     const r = await fetch(`${API_URL}/admin/projects/${projectId}/detail`, { headers: { 'Authorization': `Bearer ${token}` } }); return r.json();
+  },
+  adminSyncProjectPayments: async (projectId, token) => {
+    const r = await fetch(`${API_URL}/admin/projects/${projectId}/payments/sync`, { method: 'POST', headers: { 'Authorization': `Bearer ${token}` } }); return r.json();
   },
   adminGetTodaysJobs: async (token) => {
     const r = await fetch(`${API_URL}/admin/todays-jobs`, { headers: { 'Authorization': `Bearer ${token}` } }); return r.json();
@@ -746,6 +749,35 @@ function StatusBadge({ status }) {
   return (
     <span style={{ padding: '0.4rem 0.8rem', borderRadius: '8px', background: sc.bg, border: `1px solid ${sc.border}`, color: sc.text, fontSize: '0.8rem', fontWeight: '600', textTransform: 'capitalize' }}>
       {status?.replace('_', ' ')}
+    </span>
+  );
+}
+
+// Pill summarizing whether the deposit or final payment is paid on a project.
+function PaymentStatusBadge({ label, paid }) {
+  const bg = paid ? 'rgba(34,197,94,0.15)' : 'rgba(148,163,184,0.12)';
+  const border = paid ? 'rgba(34,197,94,0.4)' : 'rgba(148,163,184,0.3)';
+  const color = paid ? COLORS.green : COLORS.textMuted;
+  return (
+    <span style={{ padding: '0.25rem 0.6rem', borderRadius: '999px', background: bg, border: `1px solid ${border}`, color, fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+      {label}: {paid ? 'paid' : 'unpaid'}
+    </span>
+  );
+}
+
+// Status pill for individual rows in the payment history list.
+function PaymentRowBadge({ status }) {
+  const map = {
+    succeeded: { bg: 'rgba(34,197,94,0.15)', border: 'rgba(34,197,94,0.4)', color: COLORS.green },
+    pending:   { bg: 'rgba(234,179,8,0.15)', border: 'rgba(234,179,8,0.4)', color: '#facc15' },
+    failed:    { bg: 'rgba(239,68,68,0.15)', border: 'rgba(239,68,68,0.4)', color: COLORS.redLight },
+    canceled:  { bg: 'rgba(148,163,184,0.12)', border: 'rgba(148,163,184,0.3)', color: COLORS.textMuted },
+    refunded:  { bg: 'rgba(59,130,246,0.12)', border: 'rgba(59,130,246,0.35)', color: COLORS.blue },
+  };
+  const s = map[status] || map.pending;
+  return (
+    <span style={{ padding: '0.3rem 0.7rem', borderRadius: '8px', background: s.bg, border: `1px solid ${s.border}`, color: s.color, fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.03em', whiteSpace: 'nowrap' }}>
+      {status}
     </span>
   );
 }
@@ -2105,6 +2137,54 @@ function AdminJobExpanded({ job, token, user, onRefresh, onCollapse }) {
           </div>
         </div>
       )}
+
+      {/* Payment history — every PaymentIntent we've ever created for this job */}
+      <div style={{ background: 'rgba(10,10,10,0.5)', borderRadius: '10px', padding: '12px 15px', marginBottom: '15px', border: `1px solid ${COLORS.border}` }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px', flexWrap: 'wrap' }}>
+          <h4 style={{ color: COLORS.red, margin: 0, fontSize: '0.95rem' }}>Payment History</h4>
+          <PaymentStatusBadge label="Deposit" paid={job.deposit_paid} />
+          <PaymentStatusBadge label="Final" paid={job.final_payment_paid} />
+          <button
+            onClick={async () => {
+              const r = await api.adminSyncProjectPayments(job.id, token);
+              const changed = (r.report || []).filter(x => x.action !== 'no_change' && x.action !== 'still_pending').length;
+              alert(changed > 0
+                ? `Reconciled ${changed} payment${changed === 1 ? '' : 's'} from Stripe.`
+                : 'All payments already in sync with Stripe.');
+              loadDetail();
+              onRefresh();
+            }}
+            style={{ ...btnSecondary, padding: '4px 10px', fontSize: '0.75rem', marginLeft: 'auto' }}
+            title="Pull current status of every PaymentIntent from Stripe and reconcile our DB"
+          >
+            <RefreshCw size={12} style={{ marginRight: '4px' }} /> Re-sync from Stripe
+          </button>
+        </div>
+        {!detail?.payments || detail.payments.length === 0 ? (
+          <p style={{ color: COLORS.textMuted, fontStyle: 'italic', fontSize: '0.9rem', margin: 0 }}>
+            No payment activity yet — customer has not been charged.
+          </p>
+        ) : (
+          <div style={{ display: 'grid', gap: '6px' }}>
+            {detail.payments.map(pmt => (
+              <div key={pmt.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px', padding: '8px 10px', background: 'rgba(255,255,255,0.04)', borderRadius: '8px', fontSize: '0.88rem' }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{ color: COLORS.text, margin: 0, fontWeight: 600, textTransform: 'capitalize' }}>
+                    {pmt.payment_type} payment — ${parseFloat(pmt.amount || 0).toFixed(2)}
+                  </p>
+                  <p style={{ color: COLORS.textMuted, margin: '2px 0 0', fontSize: '0.78rem' }}>
+                    {pmt.status === 'succeeded' && pmt.paid_at
+                      ? `Paid ${formatDateTimeEST(pmt.paid_at)}`
+                      : `Created ${formatDateTimeEST(pmt.created_at)}`}
+                    {pmt.stripe_payment_intent_id ? ` · ${pmt.stripe_payment_intent_id}` : ''}
+                  </p>
+                </div>
+                <PaymentRowBadge status={pmt.status} />
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
 
       {/* Change Order Form */}
       {showChangeOrder && (
