@@ -1968,6 +1968,12 @@ function AdminJobExpanded({ job, token, user, onRefresh, onCollapse }) {
   const [repFilter, setRepFilter] = useState('');
   const [confirmRemoveRep, setConfirmRemoveRep] = useState(null);
 
+  // Schedule edit state
+  const [showSchedule, setShowSchedule] = useState(false);
+  const initialScheduleDate = job.scheduled_date ? new Date(job.scheduled_date).toISOString().slice(0, 10) : '';
+  const [scheduleDate, setScheduleDate] = useState(initialScheduleDate);
+  const [scheduleWorkTime, setScheduleWorkTime] = useState(job.work_time || '');
+
   // Full project detail (original quote, sender, change orders, payments)
   const [detail, setDetail] = useState(null);
   const loadDetail = useCallback(async () => {
@@ -1992,6 +1998,22 @@ function AdminJobExpanded({ job, token, user, onRefresh, onCollapse }) {
     await api.adminCreateChangeOrder({ projectId: job.id, description: coDescription, amount: parseFloat(coAmount) }, token);
     setShowChangeOrder(false); setCoDescription(''); setCoAmount('');
     alert('Change order created and customer notified.');
+    onRefresh();
+    loadDetail();
+  };
+
+  const handleSaveSchedule = async () => {
+    if (!scheduleDate) { alert('Pick a date.'); return; }
+    const r = await api.adminEditProject(job.id, { scheduledDate: scheduleDate, workTime: scheduleWorkTime || null }, token);
+    if (r.error) { alert(r.error); return; }
+    const dateMoved = scheduleDate !== initialScheduleDate;
+    const timeMoved = (scheduleWorkTime || '') !== (job.work_time || '');
+    if (dateMoved || timeMoved) {
+      alert(`Schedule saved. Customer notified${initialScheduleDate ? ' of the reschedule' : ''}.`);
+    } else {
+      alert('Schedule saved (no change).');
+    }
+    setShowSchedule(false);
     onRefresh();
     loadDetail();
   };
@@ -2055,6 +2077,9 @@ function AdminJobExpanded({ job, token, user, onRefresh, onCollapse }) {
         </button>
         <button onClick={() => setShowRepAssign(!showRepAssign)} style={{ ...btnSecondary, padding: '8px 16px', fontSize: '0.9rem' }}>
           <Briefcase size={14} style={{ marginRight: '4px' }} /> Change Rep Assignment
+        </button>
+        <button onClick={() => setShowSchedule(!showSchedule)} style={{ ...btnSecondary, padding: '8px 16px', fontSize: '0.9rem' }}>
+          <Calendar size={14} style={{ marginRight: '4px' }} /> {job.scheduled_date ? 'Reschedule' : 'Set Schedule'}
         </button>
         {job.status !== 'complete' && (
           <button onClick={handleMarkComplete} style={{ ...btnSecondary, padding: '8px 16px', fontSize: '0.9rem', borderColor: 'rgba(34,197,94,0.3)', color: COLORS.green }}>
@@ -2198,6 +2223,33 @@ function AdminJobExpanded({ job, token, user, onRefresh, onCollapse }) {
           <div style={{ display: 'flex', gap: '10px' }}>
             <button onClick={handleCreateChangeOrder} style={{ ...btnPrimary, padding: '8px 20px' }}>Submit Change Order</button>
             <button onClick={() => setShowChangeOrder(false)} style={btnSecondary}>Cancel</button>
+          </div>
+        </div>
+      )}
+
+      {/* Schedule Form — saves trigger sendJobScheduledEmail on the backend
+          when scheduled_date or work_time actually changes. */}
+      {showSchedule && (
+        <div style={{ background: 'rgba(10,10,10,0.5)', borderRadius: '10px', padding: '15px', marginBottom: '15px', border: `1px solid ${COLORS.borderRed}` }}>
+          <h4 style={{ color: COLORS.red, marginBottom: '10px' }}>
+            {initialScheduleDate ? 'Reschedule Job' : 'Set Schedule'}
+          </h4>
+          <div style={{ marginBottom: '10px', padding: '8px 10px', background: 'rgba(255,255,255,0.04)', borderRadius: '6px', color: COLORS.textMuted, fontSize: '0.85rem' }}>
+            Customer will be emailed when you save{initialScheduleDate ? ' if the date or time actually changes' : ''}.
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '10px', marginBottom: '10px' }}>
+            <div>
+              <label style={labelStyle}>Scheduled Date</label>
+              <input type="date" value={scheduleDate} onChange={(e) => setScheduleDate(e.target.value)} style={inputStyle} />
+            </div>
+            <div>
+              <label style={labelStyle}>Work Time (optional)</label>
+              <input type="text" value={scheduleWorkTime} onChange={(e) => setScheduleWorkTime(e.target.value)} placeholder="e.g. 9 AM – 1 PM" style={inputStyle} />
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: '10px' }}>
+            <button onClick={handleSaveSchedule} style={{ ...btnPrimary, padding: '8px 20px' }}>Save & Notify Customer</button>
+            <button onClick={() => { setShowSchedule(false); setScheduleDate(initialScheduleDate); setScheduleWorkTime(job.work_time || ''); }} style={btnSecondary}>Cancel</button>
           </div>
         </div>
       )}
