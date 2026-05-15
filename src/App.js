@@ -69,6 +69,12 @@ const formatTimeEST = (dateStr) => {
 };
 const formatDateTimeEST = (dateStr) => `${formatDateEST(dateStr)} ${formatTimeEST(dateStr)}`;
 const formatMoney = (n) => parseFloat(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const formatPhone = (raw) => {
+  if (!raw) return '';
+  const digits = String(raw).replace(/\D/g, '').replace(/^1(\d{10})$/, '$1');
+  if (digits.length !== 10) return raw;
+  return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
+};
  
 // ============================================
 // API HELPER
@@ -1944,7 +1950,7 @@ function AdminJobPreviewRow({ job }) {
       <span style={{ ...cellStyle, color: COLORS.textLight }}>{job.scheduled_date ? formatDateEST(job.scheduled_date) : 'TBD'}</span>
       <span style={{ ...cellStyle, color: COLORS.text, fontWeight: 600 }}>{job.service_type || job.title}</span>
       <span style={{ ...cellStyle, color: COLORS.textLight }}>{job.first_name} {job.last_name}</span>
-      <span style={{ ...cellStyle, color: COLORS.textLight }}>{job.phone || '—'}</span>
+      <span style={{ ...cellStyle, color: COLORS.textLight }}>{job.phone ? formatPhone(job.phone) : '—'}</span>
       <span style={{ ...cellStyle, color: COLORS.textLight }} title={fullAddress}>{fullAddress || '—'}</span>
       <span style={{ ...cellStyle, color: COLORS.textLight }} title={reps}>{reps}</span>
       <span style={{ ...cellStyle, color: COLORS.textLight }}>${formatMoney(job.total_amount || 0)}</span>
@@ -2136,7 +2142,7 @@ function AdminJobExpanded({ job, token, user, onRefresh, onCollapse }) {
                     {isAdmin ? 'Foreman' : 'Rep'}
                   </span>
                   <span style={{ color: COLORS.text, fontWeight: 600 }}>{r.first_name} {r.last_name}</span>
-                  <span style={{ color: COLORS.textMuted, fontSize: '0.85rem' }}>— {r.trade || 'No trade'}{r.phone ? ` · ${r.phone}` : ''}{r.email ? ` · ${r.email}` : ''}</span>
+                  <span style={{ color: COLORS.textMuted, fontSize: '0.85rem' }}>— {r.trade || 'No trade'}{r.phone ? ` · ${formatPhone(r.phone)}` : ''}{r.email ? ` · ${r.email}` : ''}</span>
                 </div>
               );
             })}
@@ -2268,7 +2274,7 @@ function AdminJobExpanded({ job, token, user, onRefresh, onCollapse }) {
                 <div key={r.assignment_id || r.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', background: 'rgba(255,255,255,0.04)', borderRadius: '8px' }}>
                   <div>
                     <span style={{ color: COLORS.text, fontWeight: 600 }}>{r.first_name} {r.last_name}</span>
-                    <span style={{ color: COLORS.textMuted, marginLeft: '10px', fontSize: '0.85rem' }}>{r.trade || 'No trade'} &middot; {r.phone || 'no phone'} &middot; {r.email}</span>
+                    <span style={{ color: COLORS.textMuted, marginLeft: '10px', fontSize: '0.85rem' }}>{r.trade || 'No trade'} &middot; {r.phone ? formatPhone(r.phone) : 'no phone'} &middot; {r.email}</span>
                   </div>
                   <button onClick={() => setConfirmRemoveRep(r.assignment_id || r.id)} style={{ ...btnSecondary, padding: '6px 12px', fontSize: '0.85rem', borderColor: 'rgba(239,68,68,0.3)', color: COLORS.redLight }}>
                     <Trash2 size={14} /> Remove Rep
@@ -2316,7 +2322,7 @@ function AdminJobExpanded({ job, token, user, onRefresh, onCollapse }) {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '8px', marginBottom: '15px' }}>
         <p style={{ color: COLORS.textLight }}><strong style={{ color: COLORS.textMuted }}>Customer:</strong> {job.first_name} {job.last_name}</p>
         <p style={{ color: COLORS.textLight }}><strong style={{ color: COLORS.textMuted }}>Email:</strong> {job.email}</p>
-        <p style={{ color: COLORS.textLight }}><strong style={{ color: COLORS.textMuted }}>Phone:</strong> {job.phone}</p>
+        <p style={{ color: COLORS.textLight }}><strong style={{ color: COLORS.textMuted }}>Phone:</strong> {formatPhone(job.phone)}</p>
         <p style={{ color: COLORS.textLight }}><strong style={{ color: COLORS.textMuted }}>Amount:</strong> ${formatMoney(job.total_amount || 0)}</p>
         <p style={{ color: COLORS.textLight }}><strong style={{ color: COLORS.textMuted }}>Status:</strong> <StatusBadge status={job.status} /></p>
       </div>
@@ -2487,7 +2493,7 @@ function AdminQuotesTab({ quotes, token, onRefresh, user }) {
                   <span style={{ ...cell, color: COLORS.textLight }}>{formatDateEST(quote.created_at)}</span>
                   <span style={{ ...cell, color: COLORS.text, fontWeight: 600 }}>{quote.service_type || quote.title}</span>
                   <span style={{ ...cell, color: COLORS.textLight }}>{quote.first_name} {quote.last_name}</span>
-                  <span style={{ ...cell, color: COLORS.textLight }}>{quote.phone || '—'}</span>
+                  <span style={{ ...cell, color: COLORS.textLight }}>{quote.phone ? formatPhone(quote.phone) : '—'}</span>
                   <span style={{ ...cell, color: COLORS.textMuted }} title={quote.description}>{quote.description || '—'}</span>
                   <span><StatusBadge status={quote.status} /></span>
                 </>); })()}
@@ -2518,7 +2524,7 @@ function AdminQuotesTab({ quotes, token, onRefresh, user }) {
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '6px', fontSize: '0.9rem' }}>
                     <p style={{ color: COLORS.textLight }}><strong style={{ color: COLORS.textMuted }}>Name:</strong> {quote.first_name} {quote.last_name}</p>
                     <p style={{ color: COLORS.textLight }}><strong style={{ color: COLORS.textMuted }}>Email:</strong> {quote.email}</p>
-                    <p style={{ color: COLORS.textLight }}><strong style={{ color: COLORS.textMuted }}>Phone:</strong> {quote.phone || 'N/A'}</p>
+                    <p style={{ color: COLORS.textLight }}><strong style={{ color: COLORS.textMuted }}>Phone:</strong> {quote.phone ? formatPhone(quote.phone) : 'N/A'}</p>
                   </div>
                   <p style={{ color: COLORS.textLight, marginTop: '6px', fontSize: '0.9rem' }}><strong style={{ color: COLORS.textMuted }}>Description:</strong> {quote.description}</p>
                 </div>
@@ -2816,7 +2822,7 @@ function AdminRepsTab({ token, onRefresh }) {
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '6px', marginTop: '8px', fontSize: '0.9rem' }}>
                 <span style={{ color: COLORS.textLight }}>📧 {rep.email}</span>
-                <span style={{ color: COLORS.textLight }}>📱 {rep.phone || 'N/A'}</span>
+                <span style={{ color: COLORS.textLight }}>📱 {rep.phone ? formatPhone(rep.phone) : 'N/A'}</span>
                 <span style={{ color: COLORS.textMuted }}>Since {formatDateEST(rep.created_at)}</span>
               </div>
             </div>
@@ -2967,7 +2973,7 @@ function AdminAdminsTab({ token, currentUser }) {
                 <div style={{ ...cardStyle, marginTop: '5px' }}>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '8px' }}>
                     <p style={{ color: COLORS.textLight }}><strong style={{ color: COLORS.textMuted }}>Email:</strong> {a.email}</p>
-                    <p style={{ color: COLORS.textLight }}><strong style={{ color: COLORS.textMuted }}>Phone:</strong> {a.phone || '—'}</p>
+                    <p style={{ color: COLORS.textLight }}><strong style={{ color: COLORS.textMuted }}>Phone:</strong> {a.phone ? formatPhone(a.phone) : '—'}</p>
                     <p style={{ color: COLORS.textLight }}><strong style={{ color: COLORS.textMuted }}>Joined:</strong> {formatDateEST(a.created_at)}</p>
                     <p style={{ color: COLORS.textLight }}><strong style={{ color: COLORS.textMuted }}>Role:</strong> {isMaster ? 'Master Admin' : 'Admin'}</p>
                   </div>
@@ -3054,7 +3060,7 @@ function RepPortal({ user, token, onLogout }) {
                 <span style={{ color: COLORS.textLight }}>{formatDateEST(job.scheduled_date || job.created_at)}</span>
                 <span style={{ color: COLORS.text, fontWeight: 600 }}>{job.address}</span>
                 <span style={{ color: COLORS.textLight }}>{job.customer_first} {job.customer_last}</span>
-                <span style={{ color: COLORS.textLight }}>{job.customer_phone || 'N/A'}</span>
+                <span style={{ color: COLORS.textLight }}>{job.customer_phone ? formatPhone(job.customer_phone) : 'N/A'}</span>
               </div>
             </JobWindow>
             {expandedId === job.id && (
@@ -3567,7 +3573,7 @@ function AboutPage() {
             <Phone size={24} color="#dc2626" />
             <div>
               <div style={{ color: '#a3a3a3', fontSize: '0.9rem' }}>Phone</div>
-              <div style={{ color: '#f5f5f5', fontWeight: '600' }}>203-350-2014</div>
+              <div style={{ color: '#f5f5f5', fontWeight: '600' }}>(203) 350-2014</div>
             </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', justifyContent: 'center' }}>
