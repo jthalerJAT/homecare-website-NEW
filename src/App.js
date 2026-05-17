@@ -220,8 +220,8 @@ const api = {
   adminGetConversations: async (token) => {
     const r = await fetch(`${API_URL}/admin/conversations`, { headers: { 'Authorization': `Bearer ${token}` } }); return r.json();
   },
-  adminGetReps: async (token) => {
-    const r = await fetch(`${API_URL}/admin/reps`, { headers: { 'Authorization': `Bearer ${token}` } }); return r.json();
+  adminGetSubs: async (token) => {
+    const r = await fetch(`${API_URL}/admin/subs`, { headers: { 'Authorization': `Bearer ${token}` } }); return r.json();
   },
   adminGetAdmins: async (token) => {
     const r = await fetch(`${API_URL}/admin/admins`, { headers: { 'Authorization': `Bearer ${token}` } }); return r.json();
@@ -238,29 +238,29 @@ const api = {
     const r = await fetch(`${API_URL}/admin/assignable-staff`, { headers: { 'Authorization': `Bearer ${token}` } });
     return r.json();
   },
-  adminAddRep: async (data, token) => {
-    const r = await fetch(`${API_URL}/admin/reps`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify(data) });
+  adminAddSub: async (data, token) => {
+    const r = await fetch(`${API_URL}/admin/subs`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify(data) });
     return r.json();
   },
-  adminDeleteRep: async (repId, token) => {
-    const r = await fetch(`${API_URL}/admin/reps/${repId}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } }); return r.json();
+  adminDeleteSub: async (subId, token) => {
+    const r = await fetch(`${API_URL}/admin/subs/${subId}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } }); return r.json();
   },
-  adminAssignRep: async (projectId, repId, token) => {
-    const r = await fetch(`${API_URL}/admin/rep-assignments`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify({ projectId, repId }) });
+  adminAssignSub: async (projectId, subId, token) => {
+    const r = await fetch(`${API_URL}/admin/sub-assignments`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify({ projectId, subId }) });
     return r.json();
   },
-  adminRemoveRepAssignment: async (assignmentId, token) => {
-    const r = await fetch(`${API_URL}/admin/rep-assignments/${assignmentId}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } }); return r.json();
+  adminRemoveSubAssignment: async (assignmentId, token) => {
+    const r = await fetch(`${API_URL}/admin/sub-assignments/${assignmentId}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } }); return r.json();
   },
-  adminGetRepAssignments: async (token) => {
-    const r = await fetch(`${API_URL}/admin/rep-assignments`, { headers: { 'Authorization': `Bearer ${token}` } }); return r.json();
+  adminGetSubAssignments: async (token) => {
+    const r = await fetch(`${API_URL}/admin/sub-assignments`, { headers: { 'Authorization': `Bearer ${token}` } }); return r.json();
   },
-  adminGetProjectReps: async (projectId, token) => {
-    const r = await fetch(`${API_URL}/admin/projects/${projectId}/reps`, { headers: { 'Authorization': `Bearer ${token}` } }); return r.json();
+  adminGetProjectSubs: async (projectId, token) => {
+    const r = await fetch(`${API_URL}/admin/projects/${projectId}/subs`, { headers: { 'Authorization': `Bearer ${token}` } }); return r.json();
   },
-  // Rep
-  repGetMyJobs: async (token) => {
-    const r = await fetch(`${API_URL}/rep/my-jobs`, { headers: { 'Authorization': `Bearer ${token}` } }); return r.json();
+  // Sub
+  subGetMyJobs: async (token) => {
+    const r = await fetch(`${API_URL}/sub/my-jobs`, { headers: { 'Authorization': `Bearer ${token}` } }); return r.json();
   },
 };
  
@@ -322,7 +322,7 @@ export default function HomeCareWebsite() {
       case 'portal':
         if (!isAuthenticated) return <LoginPage onLoginSuccess={handleLogin} setCurrentPage={setCurrentPage} />;
         if (['admin', 'master_admin'].includes(user?.user_type)) return <AdminDashboard user={user} token={token} onLogout={handleLogout} />;
-        if (user?.user_type === 'rep') return <RepPortal user={user} token={token} onLogout={handleLogout} />;
+        if (user?.user_type === 'sub') return <SubPortal user={user} token={token} onLogout={handleLogout} />;
         return <CustomerPortal user={user} token={token} onLogout={handleLogout} setCurrentPage={setCurrentPage} refreshUser={refreshUser} />;
       case 'register': return <RegisterPage onRegisterSuccess={handleLogin} setCurrentPage={setCurrentPage} />;
       case 'forgot-password': return <ForgotPasswordPage setCurrentPage={setCurrentPage} />;
@@ -502,8 +502,8 @@ function MessageChat({ type, id, token, currentUser, readOnly = false }) {
   const lastMessageCountRef = useRef(0);
   const justSentRef = useRef(false);
 
-  const isStaff = ['admin', 'master_admin', 'rep'].includes(currentUser?.user_type);
-  const liveTitle = isStaff ? 'Message Customer' : 'Message Your Rep';
+  const isStaff = ['admin', 'master_admin', 'sub'].includes(currentUser?.user_type);
+  const liveTitle = isStaff ? 'Message Customer' : 'Message Your Sub';
   const API_BASE = API_URL.replace(/\/api$/, '');
 
   const parseAttachments = (raw) => {
@@ -1843,7 +1843,7 @@ function AdminDashboard({ user, token, onLogout }) {
     { key: 'quotes', label: `Quotes (${quotes.length})` },
     { key: 'projects', label: `Projects (${projects.length})` },
     { key: 'search', label: 'Search Activity' },
-    { key: 'reps', label: 'Manage Reps' },
+    { key: 'subs', label: 'Manage Subs' },
     ...(user?.user_type === 'master_admin' ? [{ key: 'admins', label: 'Manage Admins' }] : []),
     { key: 'messages', label: 'Messages' },
   ];
@@ -1899,7 +1899,7 @@ function AdminDashboard({ user, token, onLogout }) {
       {!isLoading && activeTab === 'quotes' && <AdminQuotesTab quotes={quotes} token={token} onRefresh={fetchData} user={user} />}
       {!isLoading && activeTab === 'projects' && <AdminProjectsTab projects={projects} token={token} user={user} onRefresh={fetchData} />}
       {!isLoading && activeTab === 'search' && <AdminSearchTab token={token} user={user} />}
-      {!isLoading && activeTab === 'reps' && <AdminRepsTab token={token} onRefresh={fetchData} />}
+      {!isLoading && activeTab === 'subs' && <AdminSubsTab token={token} onRefresh={fetchData} />}
       {!isLoading && activeTab === 'admins' && user?.user_type === 'master_admin' && <AdminAdminsTab token={token} currentUser={user} />}
       {!isLoading && activeTab === 'messages' && <AdminMessagesTab token={token} user={user} />}
     </div>
@@ -1935,15 +1935,15 @@ const adminJobCols = '0.9fr 1.1fr 1fr 1fr 1.4fr 1.2fr 0.8fr 0.8fr';
 function AdminJobsHeader() {
   return (
     <div style={{ display: 'grid', gridTemplateColumns: adminJobCols, gap: '10px', padding: '0 20px', color: COLORS.textMuted, fontSize: '0.8rem', fontWeight: 600 }}>
-      <span>Start Date</span><span>Job Type</span><span>Customer</span><span>Phone</span><span>Address</span><span>Reps</span><span>Amount</span><span>Status</span>
+      <span>Start Date</span><span>Job Type</span><span>Customer</span><span>Phone</span><span>Address</span><span>Subs</span><span>Amount</span><span>Status</span>
     </div>
   );
 }
 function AdminJobPreviewRow({ job }) {
   const addressParts = [job.address, job.city, job.state].filter(Boolean);
   const fullAddress = addressParts.join(', ');
-  const reps = (job.assigned_reps && job.assigned_reps.length > 0)
-    ? job.assigned_reps.map(r => r.rep_name).join(', ')
+  const subs = (job.assigned_subs && job.assigned_subs.length > 0)
+    ? job.assigned_subs.map(r => r.sub_name).join(', ')
     : '—';
   const cellStyle = { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: '0.88rem' };
   return (
@@ -1953,7 +1953,7 @@ function AdminJobPreviewRow({ job }) {
       <span style={{ ...cellStyle, color: COLORS.textLight }}>{job.first_name} {job.last_name}</span>
       <span style={{ ...cellStyle, color: COLORS.textLight }}>{job.phone ? formatPhone(job.phone) : '—'}</span>
       <span style={{ ...cellStyle, color: COLORS.textLight }} title={fullAddress}>{fullAddress || '—'}</span>
-      <span style={{ ...cellStyle, color: COLORS.textLight }} title={reps}>{reps}</span>
+      <span style={{ ...cellStyle, color: COLORS.textLight }} title={subs}>{subs}</span>
       <span style={{ ...cellStyle, color: COLORS.textLight }}>${formatMoney(job.total_amount || 0)}</span>
       <span><StatusBadge status={job.status} /></span>
     </div>
@@ -1969,12 +1969,12 @@ function AdminJobExpanded({ job, token, user, onRefresh, onCollapse }) {
   const [coAmount, setCoAmount] = useState('');
   const [showConfirmDelete, setShowConfirmDelete] = useState(false);
 
-  // Rep assignment state
-  const [showRepAssign, setShowRepAssign] = useState(false);
-  const [assignedReps, setAssignedReps] = useState([]);
-  const [availableReps, setAvailableReps] = useState([]);
-  const [repFilter, setRepFilter] = useState('');
-  const [confirmRemoveRep, setConfirmRemoveRep] = useState(null);
+  // Sub assignment state
+  const [showSubAssign, setShowSubAssign] = useState(false);
+  const [assignedSubs, setAssignedSubs] = useState([]);
+  const [availableSubs, setAvailableSubs] = useState([]);
+  const [subFilter, setSubFilter] = useState('');
+  const [confirmRemoveSub, setConfirmRemoveSub] = useState(null);
 
   // Schedule edit state
   const [showSchedule, setShowSchedule] = useState(false);
@@ -1990,16 +1990,16 @@ function AdminJobExpanded({ job, token, user, onRefresh, onCollapse }) {
   }, [job.id, token]);
   useEffect(() => { loadDetail(); }, [loadDetail]);
 
-  const loadReps = useCallback(async () => {
+  const loadSubs = useCallback(async () => {
     const [assigned, all] = await Promise.all([
-      api.adminGetProjectReps(job.id, token),
+      api.adminGetProjectSubs(job.id, token),
       api.adminGetAssignableStaff(token),
     ]);
-    setAssignedReps(assigned.reps || []);
-    setAvailableReps(all.staff || []);
+    setAssignedSubs(assigned.subs || []);
+    setAvailableSubs(all.staff || []);
   }, [job.id, token]);
 
-  useEffect(() => { loadReps(); }, [loadReps]);
+  useEffect(() => { loadSubs(); }, [loadSubs]);
 
   const handleCreateChangeOrder = async () => {
     if (!coDescription || !coAmount) { alert('Description and amount required'); return; }
@@ -2041,31 +2041,31 @@ function AdminJobExpanded({ job, token, user, onRefresh, onCollapse }) {
     onRefresh();
   };
 
-  const handleAssignRep = async (repId) => {
-    if (!repId) return;
-    const r = await api.adminAssignRep(job.id, repId, token);
+  const handleAssignSub = async (subId) => {
+    if (!subId) return;
+    const r = await api.adminAssignSub(job.id, subId, token);
     if (r.error) { alert(r.error); return; }
-    setRepFilter('');
-    loadReps();
+    setSubFilter('');
+    loadSubs();
     onRefresh();
     loadDetail();
   };
 
-  const handleRemoveRep = async (assignmentId) => {
-    await api.adminRemoveRepAssignment(assignmentId, token);
-    setConfirmRemoveRep(null);
-    loadReps();
+  const handleRemoveSub = async (assignmentId) => {
+    await api.adminRemoveSubAssignment(assignmentId, token);
+    setConfirmRemoveSub(null);
+    loadSubs();
     onRefresh();
     loadDetail();
   };
 
-  const assignedRepIds = new Set(assignedReps.map(r => r.rep_id || r.id));
-  const filteredAvailable = availableReps
-    .filter(r => !assignedRepIds.has(r.id))
+  const assignedSubIds = new Set(assignedSubs.map(r => r.sub_id || r.id));
+  const filteredAvailable = availableSubs
+    .filter(r => !assignedSubIds.has(r.id))
     .filter(r => {
-      if (!repFilter) return true;
-      const q = repFilter.toLowerCase();
-      const roleLabel = ['admin', 'master_admin'].includes(r.user_type) ? 'foreman admin' : 'rep';
+      if (!subFilter) return true;
+      const q = subFilter.toLowerCase();
+      const roleLabel = ['admin', 'master_admin'].includes(r.user_type) ? 'foreman admin' : 'sub';
       return `${r.first_name} ${r.last_name}`.toLowerCase().includes(q)
         || (r.trade || '').toLowerCase().includes(q)
         || roleLabel.includes(q);
@@ -2084,8 +2084,8 @@ function AdminJobExpanded({ job, token, user, onRefresh, onCollapse }) {
         <button onClick={() => setShowChangeOrder(!showChangeOrder)} style={{ ...btnPrimary, padding: '8px 16px', fontSize: '0.9rem' }}>
           <Plus size={14} style={{ marginRight: '4px' }} /> New Change Order
         </button>
-        <button onClick={() => setShowRepAssign(!showRepAssign)} style={{ ...btnSecondary, padding: '8px 16px', fontSize: '0.9rem' }}>
-          <Briefcase size={14} style={{ marginRight: '4px' }} /> Change Rep Assignment
+        <button onClick={() => setShowSubAssign(!showSubAssign)} style={{ ...btnSecondary, padding: '8px 16px', fontSize: '0.9rem' }}>
+          <Briefcase size={14} style={{ marginRight: '4px' }} /> Change Sub Assignment
         </button>
         <button onClick={() => setShowSchedule(!showSchedule)} style={{ ...btnSecondary, padding: '8px 16px', fontSize: '0.9rem' }}>
           <Calendar size={14} style={{ marginRight: '4px' }} /> {job.scheduled_date ? 'Reschedule' : 'Set Schedule'}
@@ -2101,7 +2101,7 @@ function AdminJobExpanded({ job, token, user, onRefresh, onCollapse }) {
       </div>
 
       {showConfirmDelete && <ConfirmDialog message="Are you sure you want to delete this job?" onConfirm={handleDelete} onCancel={() => setShowConfirmDelete(false)} />}
-      {confirmRemoveRep && <ConfirmDialog message="Are you sure you want to remove this rep?" onConfirm={() => handleRemoveRep(confirmRemoveRep)} onCancel={() => setConfirmRemoveRep(null)} />}
+      {confirmRemoveSub && <ConfirmDialog message="Are you sure you want to remove this sub?" onConfirm={() => handleRemoveSub(confirmRemoveSub)} onCancel={() => setConfirmRemoveSub(null)} />}
 
       {/* Original quote that produced this project */}
       {detail?.quote && (
@@ -2128,19 +2128,19 @@ function AdminJobExpanded({ job, token, user, onRefresh, onCollapse }) {
         </div>
       )}
 
-      {/* Reps currently assigned (always visible — separate from the assign UI) */}
+      {/* Subs currently assigned (always visible — separate from the assign UI) */}
       <div style={{ background: 'rgba(10,10,10,0.5)', borderRadius: '10px', padding: '12px 15px', marginBottom: '15px', border: `1px solid ${COLORS.border}` }}>
         <h4 style={{ color: COLORS.red, marginBottom: '8px', fontSize: '0.95rem' }}>Workers on this job</h4>
-        {assignedReps.length === 0 ? (
-          <p style={{ color: COLORS.textMuted, fontStyle: 'italic', fontSize: '0.9rem', margin: 0 }}>No reps assigned yet — use "Change Rep Assignment" above.</p>
+        {assignedSubs.length === 0 ? (
+          <p style={{ color: COLORS.textMuted, fontStyle: 'italic', fontSize: '0.9rem', margin: 0 }}>No subs assigned yet — use "Change Sub Assignment" above.</p>
         ) : (
           <div style={{ display: 'grid', gap: '6px' }}>
-            {assignedReps.map(r => {
+            {assignedSubs.map(r => {
               const isAdmin = ['admin', 'master_admin'].includes(r.user_type);
               return (
                 <div key={r.assignment_id || r.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.9rem' }}>
                   <span style={{ padding: '0.15rem 0.5rem', borderRadius: '999px', fontSize: '0.7rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', background: isAdmin ? 'rgba(220,38,38,0.15)' : 'rgba(59,130,246,0.12)', color: isAdmin ? COLORS.red : COLORS.blue, border: `1px solid ${isAdmin ? 'rgba(220,38,38,0.4)' : 'rgba(59,130,246,0.35)'}` }}>
-                    {isAdmin ? 'Foreman' : 'Rep'}
+                    {isAdmin ? 'Foreman' : 'Sub'}
                   </span>
                   <span style={{ color: COLORS.text, fontWeight: 600 }}>{r.first_name} {r.last_name}</span>
                   <span style={{ color: COLORS.textMuted, fontSize: '0.85rem' }}>— {r.trade || 'No trade'}{r.phone ? ` · ${formatPhone(r.phone)}` : ''}{r.email ? ` · ${r.email}` : ''}</span>
@@ -2263,50 +2263,50 @@ function AdminJobExpanded({ job, token, user, onRefresh, onCollapse }) {
         </div>
       )}
 
-      {/* Rep Assignment */}
-      {showRepAssign && (
+      {/* Sub Assignment */}
+      {showSubAssign && (
         <div style={{ background: 'rgba(10,10,10,0.5)', borderRadius: '10px', padding: '15px', marginBottom: '15px', border: `1px solid ${COLORS.borderRed}` }}>
-          <h4 style={{ color: COLORS.red, marginBottom: '10px' }}>Reps Assigned to this Job</h4>
-          {assignedReps.length === 0 ? (
-            <p style={{ color: COLORS.textMuted, fontStyle: 'italic', marginBottom: '12px' }}>No reps assigned yet.</p>
+          <h4 style={{ color: COLORS.red, marginBottom: '10px' }}>Subs Assigned to this Job</h4>
+          {assignedSubs.length === 0 ? (
+            <p style={{ color: COLORS.textMuted, fontStyle: 'italic', marginBottom: '12px' }}>No subs assigned yet.</p>
           ) : (
             <div style={{ display: 'grid', gap: '8px', marginBottom: '15px' }}>
-              {assignedReps.map(r => (
+              {assignedSubs.map(r => (
                 <div key={r.assignment_id || r.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', background: 'rgba(255,255,255,0.04)', borderRadius: '8px' }}>
                   <div>
                     <span style={{ color: COLORS.text, fontWeight: 600 }}>{r.first_name} {r.last_name}</span>
                     <span style={{ color: COLORS.textMuted, marginLeft: '10px', fontSize: '0.85rem' }}>{r.trade || 'No trade'} &middot; {r.phone ? formatPhone(r.phone) : 'no phone'} &middot; {r.email}</span>
                   </div>
-                  <button onClick={() => setConfirmRemoveRep(r.assignment_id || r.id)} style={{ ...btnSecondary, padding: '6px 12px', fontSize: '0.85rem', borderColor: 'rgba(239,68,68,0.3)', color: COLORS.redLight }}>
-                    <Trash2 size={14} /> Remove Rep
+                  <button onClick={() => setConfirmRemoveSub(r.assignment_id || r.id)} style={{ ...btnSecondary, padding: '6px 12px', fontSize: '0.85rem', borderColor: 'rgba(239,68,68,0.3)', color: COLORS.redLight }}>
+                    <Trash2 size={14} /> Remove Sub
                   </button>
                 </div>
               ))}
             </div>
           )}
 
-          <label style={labelStyle}>Add a Rep or Foreman</label>
+          <label style={labelStyle}>Add a Sub or Foreman</label>
           <input
             type="text"
-            value={repFilter}
-            onChange={(e) => setRepFilter(e.target.value)}
+            value={subFilter}
+            onChange={(e) => setSubFilter(e.target.value)}
             placeholder="Type to filter by name, role, or trade..."
             style={{ ...inputStyle, marginBottom: '8px' }}
           />
           {filteredAvailable.length === 0 ? (
             <p style={{ color: COLORS.textMuted, fontStyle: 'italic', fontSize: '0.85rem' }}>
-              {availableReps.length === 0 ? 'No staff in roster yet.' : 'No matching staff available.'}
+              {availableSubs.length === 0 ? 'No staff in roster yet.' : 'No matching staff available.'}
             </p>
           ) : (
             <div style={{ display: 'grid', gap: '6px', maxHeight: '200px', overflowY: 'auto' }}>
               {filteredAvailable.map(r => {
                 const isAdmin = ['admin', 'master_admin'].includes(r.user_type);
                 return (
-                  <button key={r.id} onClick={() => handleAssignRep(r.id)} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', background: 'rgba(255,255,255,0.04)', border: `1px solid ${COLORS.border}`, borderRadius: '6px', color: COLORS.text, cursor: 'pointer', textAlign: 'left' }}>
+                  <button key={r.id} onClick={() => handleAssignSub(r.id)} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', background: 'rgba(255,255,255,0.04)', border: `1px solid ${COLORS.border}`, borderRadius: '6px', color: COLORS.text, cursor: 'pointer', textAlign: 'left' }}>
                     <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                       <strong>{r.first_name} {r.last_name}</strong>
                       <span style={{ padding: '0.15rem 0.5rem', borderRadius: '999px', fontSize: '0.7rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', background: isAdmin ? 'rgba(220,38,38,0.15)' : 'rgba(59,130,246,0.12)', color: isAdmin ? COLORS.red : COLORS.blue, border: `1px solid ${isAdmin ? 'rgba(220,38,38,0.4)' : 'rgba(59,130,246,0.35)'}` }}>
-                        {isAdmin ? 'Foreman' : 'Rep'}
+                        {isAdmin ? 'Foreman' : 'Sub'}
                       </span>
                       <span style={{ color: COLORS.textMuted, fontSize: '0.85rem' }}>— {r.trade || 'No trade'}</span>
                     </span>
@@ -2594,8 +2594,8 @@ function AdminProjectsTab({ projects, token, user, onRefresh }) {
 
   const filtered = !search.trim() ? projects : projects.filter(j => {
     const q = search.toLowerCase();
-    const repNames = (j.assigned_reps || []).map(r => r.rep_name).join(' ').toLowerCase();
-    return [j.title, j.service_type, j.description, j.first_name, j.last_name, j.email, repNames]
+    const subNames = (j.assigned_subs || []).map(r => r.sub_name).join(' ').toLowerCase();
+    return [j.title, j.service_type, j.description, j.first_name, j.last_name, j.email, subNames]
       .filter(Boolean).some(v => String(v).toLowerCase().includes(q));
   });
 
@@ -2606,7 +2606,7 @@ function AdminProjectsTab({ projects, token, user, onRefresh }) {
         <input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search projects by service, customer, rep, description..."
+          placeholder="Search projects by service, customer, sub, description..."
           style={{ ...inputStyle, paddingLeft: '36px', paddingRight: search ? '36px' : '0.875rem' }}
         />
         {search && (
@@ -2745,86 +2745,86 @@ function AdminSearchTab({ token, user }) {
 }
  
 // ============================================
-// ADMIN: REPS TAB
+// ADMIN: SUBS TAB
 // ============================================
-function AdminRepsTab({ token, onRefresh }) {
-  const [reps, setReps] = useState([]);
+function AdminSubsTab({ token, onRefresh }) {
+  const [subs, setSubs] = useState([]);
   const [showAddForm, setShowAddForm] = useState(false);
-  const [newRep, setNewRep] = useState({ firstName: '', lastName: '', email: '', phone: '', address: '', city: '', state: '', zipCode: '', trade: '', notes: '' });
+  const [newSub, setNewSub] = useState({ firstName: '', lastName: '', email: '', phone: '', address: '', city: '', state: '', zipCode: '', trade: '', notes: '' });
   const [showConfirmDelete, setShowConfirmDelete] = useState(null);
 
-  useEffect(() => { api.adminGetReps(token).then(r => setReps(r.reps || [])); }, [token]);
+  useEffect(() => { api.adminGetSubs(token).then(r => setSubs(r.subs || [])); }, [token]);
 
-  const handleAddRep = async () => {
-    if (!newRep.firstName || !newRep.lastName || !newRep.email) { alert('Name and email required'); return; }
-    const result = await api.adminAddRep(newRep, token);
-    if (result.rep) {
-      alert(`Rep created! Temp password: ${result._devTempPassword || 'check logs'}`);
+  const handleAddSub = async () => {
+    if (!newSub.firstName || !newSub.lastName || !newSub.email) { alert('Name and email required'); return; }
+    const result = await api.adminAddSub(newSub, token);
+    if (result.sub) {
+      alert(`Sub created! Temp password: ${result._devTempPassword || 'check logs'}`);
       setShowAddForm(false);
-      setNewRep({ firstName: '', lastName: '', email: '', phone: '', address: '', city: '', state: '', zipCode: '', trade: '', notes: '' });
-      api.adminGetReps(token).then(r => setReps(r.reps || []));
-    } else { alert(result.error || 'Failed to add rep'); }
+      setNewSub({ firstName: '', lastName: '', email: '', phone: '', address: '', city: '', state: '', zipCode: '', trade: '', notes: '' });
+      api.adminGetSubs(token).then(r => setSubs(r.subs || []));
+    } else { alert(result.error || 'Failed to add sub'); }
   };
  
-  const handleDeleteRep = async (repId) => {
-    await api.adminDeleteRep(repId, token);
+  const handleDeleteSub = async (subId) => {
+    await api.adminDeleteSub(subId, token);
     setShowConfirmDelete(null);
-    api.adminGetReps(token).then(r => setReps(r.reps || []));
+    api.adminGetSubs(token).then(r => setSubs(r.subs || []));
   };
  
   return (
     <div>
       <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
         <button onClick={() => setShowAddForm(!showAddForm)} style={{ ...btnPrimary, padding: '10px 20px' }}>
-          <Plus size={16} style={{ marginRight: '4px' }} /> Add New Rep
+          <Plus size={16} style={{ marginRight: '4px' }} /> Add New Sub
         </button>
       </div>
  
       {showAddForm && (
         <div style={{ ...cardStyle, marginBottom: '20px', borderColor: COLORS.red }}>
-          <h4 style={{ color: COLORS.red, marginBottom: '12px' }}>Add New Rep</h4>
+          <h4 style={{ color: COLORS.red, marginBottom: '12px' }}>Add New Sub</h4>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '10px' }}>
-            <div><label style={labelStyle}>First Name *</label><input value={newRep.firstName} onChange={(e) => setNewRep({ ...newRep, firstName: e.target.value })} style={inputStyle} /></div>
-            <div><label style={labelStyle}>Last Name *</label><input value={newRep.lastName} onChange={(e) => setNewRep({ ...newRep, lastName: e.target.value })} style={inputStyle} /></div>
+            <div><label style={labelStyle}>First Name *</label><input value={newSub.firstName} onChange={(e) => setNewSub({ ...newSub, firstName: e.target.value })} style={inputStyle} /></div>
+            <div><label style={labelStyle}>Last Name *</label><input value={newSub.lastName} onChange={(e) => setNewSub({ ...newSub, lastName: e.target.value })} style={inputStyle} /></div>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '10px' }}>
-            <div><label style={labelStyle}>Email *</label><input type="email" value={newRep.email} onChange={(e) => setNewRep({ ...newRep, email: e.target.value })} style={inputStyle} /></div>
-            <div><label style={labelStyle}>Phone</label><input value={newRep.phone} onChange={(e) => setNewRep({ ...newRep, phone: e.target.value })} style={inputStyle} /></div>
+            <div><label style={labelStyle}>Email *</label><input type="email" value={newSub.email} onChange={(e) => setNewSub({ ...newSub, email: e.target.value })} style={inputStyle} /></div>
+            <div><label style={labelStyle}>Phone</label><input value={newSub.phone} onChange={(e) => setNewSub({ ...newSub, phone: e.target.value })} style={inputStyle} /></div>
           </div>
-          <div style={{ marginBottom: '10px' }}><label style={labelStyle}>Home Address</label><input value={newRep.address} onChange={(e) => setNewRep({ ...newRep, address: e.target.value })} style={inputStyle} placeholder="Street address" /></div>
+          <div style={{ marginBottom: '10px' }}><label style={labelStyle}>Home Address</label><input value={newSub.address} onChange={(e) => setNewSub({ ...newSub, address: e.target.value })} style={inputStyle} placeholder="Street address" /></div>
           <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: '10px', marginBottom: '10px' }}>
-            <div><label style={labelStyle}>City</label><input value={newRep.city} onChange={(e) => setNewRep({ ...newRep, city: e.target.value })} style={inputStyle} /></div>
-            <div><label style={labelStyle}>State</label><input value={newRep.state} onChange={(e) => setNewRep({ ...newRep, state: e.target.value })} style={inputStyle} /></div>
-            <div><label style={labelStyle}>Zip</label><input value={newRep.zipCode} onChange={(e) => setNewRep({ ...newRep, zipCode: e.target.value })} style={inputStyle} /></div>
+            <div><label style={labelStyle}>City</label><input value={newSub.city} onChange={(e) => setNewSub({ ...newSub, city: e.target.value })} style={inputStyle} /></div>
+            <div><label style={labelStyle}>State</label><input value={newSub.state} onChange={(e) => setNewSub({ ...newSub, state: e.target.value })} style={inputStyle} /></div>
+            <div><label style={labelStyle}>Zip</label><input value={newSub.zipCode} onChange={(e) => setNewSub({ ...newSub, zipCode: e.target.value })} style={inputStyle} /></div>
           </div>
-          <div style={{ marginBottom: '10px' }}><label style={labelStyle}>Trade</label><input value={newRep.trade} onChange={(e) => setNewRep({ ...newRep, trade: e.target.value })} style={inputStyle} placeholder="e.g. Plumbing, Electrical" /></div>
-          <div style={{ marginBottom: '15px' }}><label style={labelStyle}>Notes</label><textarea value={newRep.notes} onChange={(e) => setNewRep({ ...newRep, notes: e.target.value })} rows={2} style={{ ...inputStyle, resize: 'vertical' }} /></div>
+          <div style={{ marginBottom: '10px' }}><label style={labelStyle}>Trade</label><input value={newSub.trade} onChange={(e) => setNewSub({ ...newSub, trade: e.target.value })} style={inputStyle} placeholder="e.g. Plumbing, Electrical" /></div>
+          <div style={{ marginBottom: '15px' }}><label style={labelStyle}>Notes</label><textarea value={newSub.notes} onChange={(e) => setNewSub({ ...newSub, notes: e.target.value })} rows={2} style={{ ...inputStyle, resize: 'vertical' }} /></div>
           <div style={{ display: 'flex', gap: '10px' }}>
-            <button onClick={handleAddRep} style={{ ...btnPrimary, padding: '8px 20px' }}>Create Rep</button>
+            <button onClick={handleAddSub} style={{ ...btnPrimary, padding: '8px 20px' }}>Create Sub</button>
             <button onClick={() => setShowAddForm(false)} style={btnSecondary}>Cancel</button>
           </div>
         </div>
       )}
  
-      {showConfirmDelete && <ConfirmDialog message="Are you sure you want to remove this rep?" onConfirm={() => handleDeleteRep(showConfirmDelete)} onCancel={() => setShowConfirmDelete(null)} />}
+      {showConfirmDelete && <ConfirmDialog message="Are you sure you want to remove this sub?" onConfirm={() => handleDeleteSub(showConfirmDelete)} onCancel={() => setShowConfirmDelete(null)} />}
  
       <div style={{ display: 'grid', gap: '10px' }}>
-        {reps.length === 0 ? <p style={{ color: COLORS.textMuted }}>No reps yet.</p> :
-          reps.map(rep => (
-            <div key={rep.id} style={cardStyle}>
+        {subs.length === 0 ? <p style={{ color: COLORS.textMuted }}>No subs yet.</p> :
+          subs.map(sub => (
+            <div key={sub.id} style={cardStyle}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
                 <div>
-                  <span style={{ color: COLORS.text, fontWeight: 600, fontSize: '1.05rem' }}>{rep.first_name} {rep.last_name}</span>
-                  <span style={{ color: COLORS.textMuted, marginLeft: '10px', fontSize: '0.9rem' }}>— {rep.trade || 'No trade'}</span>
+                  <span style={{ color: COLORS.text, fontWeight: 600, fontSize: '1.05rem' }}>{sub.first_name} {sub.last_name}</span>
+                  <span style={{ color: COLORS.textMuted, marginLeft: '10px', fontSize: '0.9rem' }}>— {sub.trade || 'No trade'}</span>
                 </div>
-                <button onClick={() => setShowConfirmDelete(rep.id)} style={{ ...btnSecondary, padding: '6px 12px', fontSize: '0.85rem', borderColor: 'rgba(239,68,68,0.3)', color: COLORS.redLight }}>
+                <button onClick={() => setShowConfirmDelete(sub.id)} style={{ ...btnSecondary, padding: '6px 12px', fontSize: '0.85rem', borderColor: 'rgba(239,68,68,0.3)', color: COLORS.redLight }}>
                   <Trash2 size={14} /> Remove
                 </button>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '6px', marginTop: '8px', fontSize: '0.9rem' }}>
-                <span style={{ color: COLORS.textLight }}>📧 {rep.email}</span>
-                <span style={{ color: COLORS.textLight }}>📱 {rep.phone ? formatPhone(rep.phone) : 'N/A'}</span>
-                <span style={{ color: COLORS.textMuted }}>Since {formatDateEST(rep.created_at)}</span>
+                <span style={{ color: COLORS.textLight }}>📧 {sub.email}</span>
+                <span style={{ color: COLORS.textLight }}>📱 {sub.phone ? formatPhone(sub.phone) : 'N/A'}</span>
+                <span style={{ color: COLORS.textMuted }}>Since {formatDateEST(sub.created_at)}</span>
               </div>
             </div>
           ))
@@ -3020,7 +3020,7 @@ function AdminAdminsTab({ token, currentUser }) {
               ))}
             </div>
             <p style={{ color: COLORS.textMuted, fontSize: '0.8rem', marginTop: '10px' }}>
-              Only customer accounts can be promoted. Reps must be demoted first via SQL if needed.
+              Only customer accounts can be promoted. Subs must be demoted first via SQL if needed.
             </p>
           </div>
         )}
@@ -3030,15 +3030,15 @@ function AdminAdminsTab({ token, currentUser }) {
 }
 
 // ============================================
-// REP PORTAL
+// SUB PORTAL
 // ============================================
-function RepPortal({ user, token, onLogout }) {
+function SubPortal({ user, token, onLogout }) {
   const [jobs, setJobs] = useState([]);
   const [expandedId, setExpandedId] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
  
   useEffect(() => {
-    api.repGetMyJobs(token).then(r => { setJobs(r.projects || []); setIsLoading(false); });
+    api.subGetMyJobs(token).then(r => { setJobs(r.projects || []); setIsLoading(false); });
   }, [token]);
  
   return (
