@@ -258,6 +258,15 @@ const api = {
   adminGetProjectSubs: async (projectId, token) => {
     const r = await fetch(`${API_URL}/admin/projects/${projectId}/subs`, { headers: { 'Authorization': `Bearer ${token}` } }); return r.json();
   },
+  // Sub payments (admin manual log of payouts)
+  adminCreateSubPayment: async (projectId, data, token) => {
+    const r = await fetch(`${API_URL}/admin/projects/${projectId}/sub-payments`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify(data) });
+    return r.json();
+  },
+  adminDeleteSubPayment: async (id, token) => {
+    const r = await fetch(`${API_URL}/admin/sub-payments/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
+    return r.json();
+  },
   // Sub
   subGetMyJobs: async (token) => {
     const r = await fetch(`${API_URL}/sub/my-jobs`, { headers: { 'Authorization': `Bearer ${token}` } }); return r.json();
@@ -763,13 +772,14 @@ function StatusBadge({ status }) {
 }
 
 // Pill summarizing whether the deposit or final payment is paid on a project.
-function PaymentStatusBadge({ label, paid }) {
+function PaymentStatusBadge({ label, paid, amount }) {
   const bg = paid ? 'rgba(34,197,94,0.15)' : 'rgba(148,163,184,0.12)';
   const border = paid ? 'rgba(34,197,94,0.4)' : 'rgba(148,163,184,0.3)';
   const color = paid ? COLORS.green : COLORS.textMuted;
+  const amt = amount != null && !isNaN(parseFloat(amount)) ? ` $${formatMoney(amount)}` : '';
   return (
     <span style={{ padding: '0.25rem 0.6rem', borderRadius: '999px', background: bg, border: `1px solid ${border}`, color, fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-      {label}: {paid ? 'paid' : 'unpaid'}
+      {label}{amt}: {paid ? 'paid' : 'unpaid'}
     </span>
   );
 }
@@ -1982,6 +1992,12 @@ function AdminJobExpanded({ job, token, user, onRefresh, onCollapse }) {
   const [scheduleDate, setScheduleDate] = useState(initialScheduleDate);
   const [scheduleWorkTime, setScheduleWorkTime] = useState(job.work_time || '');
 
+  // Sub-payment input state (manual log of payouts to a sub)
+  const [showSubPayment, setShowSubPayment] = useState(false);
+  const todayISO = new Date().toISOString().slice(0, 10);
+  const [subPaymentForm, setSubPaymentForm] = useState({ subId: '', amount: '', paidAt: todayISO, notes: '' });
+  const [confirmDeleteSubPayment, setConfirmDeleteSubPayment] = useState(null);
+
   // Full project detail (original quote, sender, change orders, payments)
   const [detail, setDetail] = useState(null);
   const loadDetail = useCallback(async () => {
@@ -2023,6 +2039,29 @@ function AdminJobExpanded({ job, token, user, onRefresh, onCollapse }) {
     }
     setShowSchedule(false);
     onRefresh();
+    loadDetail();
+  };
+
+  const handleSubmitSubPayment = async () => {
+    if (!subPaymentForm.subId) { alert('Pick a sub.'); return; }
+    if (!subPaymentForm.amount || isNaN(parseFloat(subPaymentForm.amount))) { alert('Enter a valid amount.'); return; }
+    if (!subPaymentForm.paidAt) { alert('Pick a date.'); return; }
+    const r = await api.adminCreateSubPayment(job.id, {
+      subId: parseInt(subPaymentForm.subId, 10),
+      amount: parseFloat(subPaymentForm.amount),
+      paidAt: subPaymentForm.paidAt,
+      notes: subPaymentForm.notes || null,
+    }, token);
+    if (r && r.error) { alert(r.error); return; }
+    setShowSubPayment(false);
+    setSubPaymentForm({ subId: '', amount: '', paidAt: todayISO, notes: '' });
+    loadDetail();
+  };
+
+  const handleDeleteSubPayment = async (id) => {
+    const r = await api.adminDeleteSubPayment(id, token);
+    setConfirmDeleteSubPayment(null);
+    if (r && r.error) { alert(r.error); return; }
     loadDetail();
   };
 
@@ -2176,8 +2215,8 @@ function AdminJobExpanded({ job, token, user, onRefresh, onCollapse }) {
       <div style={{ background: 'rgba(10,10,10,0.5)', borderRadius: '10px', padding: '12px 15px', marginBottom: '15px', border: `1px solid ${COLORS.border}` }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px', flexWrap: 'wrap' }}>
           <h4 style={{ color: COLORS.red, margin: 0, fontSize: '0.95rem' }}>Payment History</h4>
-          <PaymentStatusBadge label="Deposit" paid={job.deposit_paid} />
-          <PaymentStatusBadge label="Final" paid={job.final_payment_paid} />
+          <PaymentStatusBadge label="Deposit" paid={job.deposit_paid} amount={job.deposit_amount} />
+          <PaymentStatusBadge label="Final" paid={job.final_payment_paid} amount={job.final_payment_amount} />
           <button
             onClick={async () => {
               const r = await api.adminSyncProjectPayments(job.id, token);
@@ -2198,27 +2237,159 @@ function AdminJobExpanded({ job, token, user, onRefresh, onCollapse }) {
           <p style={{ color: COLORS.textMuted, fontStyle: 'italic', fontSize: '0.9rem', margin: 0 }}>
             No payment activity yet — customer has not been charged.
           </p>
-        ) : (
-          <div style={{ display: 'grid', gap: '6px' }}>
-            {detail.payments.map(pmt => (
-              <div key={pmt.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px', padding: '8px 10px', background: 'rgba(255,255,255,0.04)', borderRadius: '8px', fontSize: '0.88rem' }}>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={{ color: COLORS.text, margin: 0, fontWeight: 600, textTransform: 'capitalize' }}>
-                    {pmt.payment_type} payment — ${formatMoney(pmt.amount || 0)}
-                  </p>
-                  <p style={{ color: COLORS.textMuted, margin: '2px 0 0', fontSize: '0.78rem' }}>
-                    {pmt.status === 'succeeded' && pmt.paid_at
-                      ? `Paid ${formatDateTimeEST(pmt.paid_at)}`
-                      : `Created ${formatDateTimeEST(pmt.created_at)}`}
-                    {pmt.stripe_payment_intent_id ? ` · ${pmt.stripe_payment_intent_id}` : ''}
-                  </p>
+        ) : (() => {
+          const succeededTotal = (detail.payments || [])
+            .filter(p => p.status === 'succeeded')
+            .reduce((s, p) => s + parseFloat(p.amount || 0), 0);
+          const succeededCount = (detail.payments || []).filter(p => p.status === 'succeeded').length;
+          return (
+            <div style={{ display: 'grid', gap: '6px' }}>
+              {detail.payments.map(pmt => (
+                <div key={pmt.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px', padding: '8px 10px', background: 'rgba(255,255,255,0.04)', borderRadius: '8px', fontSize: '0.88rem' }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{ color: COLORS.text, margin: 0, fontWeight: 600, textTransform: 'capitalize' }}>
+                      {pmt.payment_type} payment — ${formatMoney(pmt.amount || 0)}
+                    </p>
+                    <p style={{ color: COLORS.textMuted, margin: '2px 0 0', fontSize: '0.78rem' }}>
+                      {pmt.status === 'succeeded' && pmt.paid_at
+                        ? `Paid ${formatDateTimeEST(pmt.paid_at)}`
+                        : `Created ${formatDateTimeEST(pmt.created_at)}`}
+                      {pmt.stripe_payment_intent_id ? ` · ${pmt.stripe_payment_intent_id}` : ''}
+                    </p>
+                  </div>
+                  <PaymentRowBadge status={pmt.status} />
                 </div>
-                <PaymentRowBadge status={pmt.status} />
+              ))}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 10px', marginTop: '4px', borderTop: `1px solid ${COLORS.border}`, fontSize: '0.9rem' }}>
+                <span style={{ color: COLORS.textMuted, fontWeight: 600 }}>
+                  Total received ({succeededCount} {succeededCount === 1 ? 'payment' : 'payments'})
+                </span>
+                <span style={{ color: COLORS.text, fontWeight: 700 }}>${formatMoney(succeededTotal)}</span>
               </div>
-            ))}
-          </div>
-        )}
+            </div>
+          );
+        })()}
       </div>
+
+      {/* Sub cost + sub payments (admin-only, never exposed to customer) */}
+      {(() => {
+        const subPayments = detail?.subPayments || [];
+        const subPaymentsTotal = subPayments.reduce((s, p) => s + parseFloat(p.amount || 0), 0);
+        const primarySubId = detail?.project?.sub_id;
+        const primarySubFromAvailable = availableSubs.find(s => s.id === primarySubId);
+        const primarySubFromAssigned  = assignedSubs.find(s => (s.sub_id || s.id) === primarySubId);
+        const primarySub = primarySubFromAvailable || primarySubFromAssigned;
+        const primarySubLabel = primarySub
+          ? `${primarySub.first_name} ${primarySub.last_name}${primarySub.trade ? ` (${primarySub.trade})` : ''}`
+          : (primarySubId ? `Sub #${primarySubId}` : '—');
+        const subCostEstimate = detail?.project?.sub_cost_estimate;
+        // Subs available for picking when logging a payment: prefer the active assignments,
+        // but fall back to the quote's primary sub if it isn't on the assignment list yet.
+        const subOptions = (() => {
+          const seen = new Set();
+          const out = [];
+          for (const s of assignedSubs) {
+            const id = s.sub_id || s.id;
+            if (!seen.has(id)) { seen.add(id); out.push({ id, label: `${s.first_name} ${s.last_name}${s.trade ? ` (${s.trade})` : ''}` }); }
+          }
+          if (primarySub && !seen.has(primarySub.id)) {
+            out.push({ id: primarySub.id, label: primarySubLabel + ' — from quote' });
+          }
+          return out;
+        })();
+
+        return (
+          <div style={{ background: 'rgba(10,10,10,0.5)', borderRadius: '10px', padding: '12px 15px', marginBottom: '15px', border: `1px dashed ${COLORS.borderRed}` }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px', flexWrap: 'wrap' }}>
+              <h4 style={{ color: COLORS.red, margin: 0, fontSize: '0.95rem' }}>Sub Cost &amp; Payments</h4>
+              <span style={{ color: COLORS.textMuted, fontSize: '0.7rem', fontStyle: 'italic' }}>Admin only — not visible to customer.</span>
+              <button onClick={() => setShowSubPayment(s => !s)} style={{ ...btnSecondary, padding: '4px 10px', fontSize: '0.75rem', marginLeft: 'auto' }}>
+                <Plus size={12} style={{ marginRight: '4px' }} /> Input Sub Payment
+              </button>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '6px', fontSize: '0.88rem', marginBottom: '10px' }}>
+              <p style={{ color: COLORS.textLight, margin: 0 }}><strong style={{ color: COLORS.textMuted }}>Sub assigned (from quote):</strong> {primarySubLabel}</p>
+              <p style={{ color: COLORS.textLight, margin: 0 }}><strong style={{ color: COLORS.textMuted }}>Sub cost estimate:</strong> {subCostEstimate != null ? `$${formatMoney(subCostEstimate)}` : '—'}</p>
+            </div>
+
+            {showSubPayment && (
+              <div style={{ background: `${COLORS.red}08`, border: `1px solid ${COLORS.borderRed}`, borderRadius: '8px', padding: '12px', marginBottom: '10px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr 1fr', gap: '10px', marginBottom: '10px' }}>
+                  <div>
+                    <label style={labelStyle}>Sub</label>
+                    <select value={subPaymentForm.subId} onChange={(e) => setSubPaymentForm({ ...subPaymentForm, subId: e.target.value })} style={inputStyle}>
+                      <option value="">— Pick a sub —</option>
+                      {subOptions.map(o => <option key={o.id} value={o.id}>{o.label}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label style={labelStyle}>Amount ($)</label>
+                    <input type="number" step="0.01" value={subPaymentForm.amount} onChange={(e) => setSubPaymentForm({ ...subPaymentForm, amount: e.target.value })} style={inputStyle} />
+                  </div>
+                  <div>
+                    <label style={labelStyle}>Date Paid</label>
+                    <input type="date" value={subPaymentForm.paidAt} onChange={(e) => setSubPaymentForm({ ...subPaymentForm, paidAt: e.target.value })} style={inputStyle} />
+                  </div>
+                </div>
+                <div style={{ marginBottom: '10px' }}>
+                  <label style={labelStyle}>Notes (optional)</label>
+                  <input value={subPaymentForm.notes} onChange={(e) => setSubPaymentForm({ ...subPaymentForm, notes: e.target.value })} placeholder="e.g. check #1024, milestone 1 paid" style={inputStyle} />
+                </div>
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  <button onClick={handleSubmitSubPayment} style={{ ...btnPrimary, padding: '8px 20px' }}>Record Payment</button>
+                  <button onClick={() => { setShowSubPayment(false); setSubPaymentForm({ subId: '', amount: '', paidAt: todayISO, notes: '' }); }} style={btnSecondary}>Cancel</button>
+                </div>
+              </div>
+            )}
+
+            {subPayments.length === 0 ? (
+              <p style={{ color: COLORS.textMuted, fontStyle: 'italic', fontSize: '0.9rem', margin: 0 }}>No sub payments recorded yet.</p>
+            ) : (
+              <div style={{ display: 'grid', gap: '6px' }}>
+                {subPayments.map(sp => (
+                  <div key={sp.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px', padding: '8px 10px', background: 'rgba(255,255,255,0.04)', borderRadius: '8px', fontSize: '0.88rem' }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <p style={{ color: COLORS.text, margin: 0, fontWeight: 600 }}>
+                        ${formatMoney(sp.amount || 0)} → {sp.sub_first_name || ''} {sp.sub_last_name || ''}{sp.sub_trade ? ` (${sp.sub_trade})` : ''}
+                      </p>
+                      <p style={{ color: COLORS.textMuted, margin: '2px 0 0', fontSize: '0.78rem' }}>
+                        Paid {formatDateEST(sp.paid_at)}
+                        {sp.notes ? ` · ${sp.notes}` : ''}
+                        {sp.created_by_first_name ? ` · logged by ${sp.created_by_first_name} ${sp.created_by_last_name || ''}` : ''}
+                      </p>
+                    </div>
+                    <button onClick={() => setConfirmDeleteSubPayment(sp.id)} style={{ background: 'none', border: 'none', color: COLORS.textMuted, cursor: 'pointer' }} title="Delete this entry">
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                ))}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 10px', marginTop: '4px', borderTop: `1px solid ${COLORS.border}`, fontSize: '0.9rem' }}>
+                  <span style={{ color: COLORS.textMuted, fontWeight: 600 }}>Total paid to subs ({subPayments.length} {subPayments.length === 1 ? 'entry' : 'entries'})</span>
+                  <span style={{ color: COLORS.text, fontWeight: 700 }}>${formatMoney(subPaymentsTotal)}</span>
+                </div>
+                {subCostEstimate != null && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '4px 10px', fontSize: '0.82rem' }}>
+                    <span style={{ color: COLORS.textMuted }}>vs. estimate ${formatMoney(subCostEstimate)}</span>
+                    <span style={{ color: subPaymentsTotal > parseFloat(subCostEstimate) ? COLORS.redLight : COLORS.textMuted }}>
+                      {subPaymentsTotal > parseFloat(subCostEstimate) ? '+' : ''}
+                      ${formatMoney(subPaymentsTotal - parseFloat(subCostEstimate))}
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {confirmDeleteSubPayment && (
+              <ConfirmDialog
+                message="Delete this sub-payment entry?"
+                onConfirm={() => handleDeleteSubPayment(confirmDeleteSubPayment)}
+                onCancel={() => setConfirmDeleteSubPayment(null)}
+              />
+            )}
+          </div>
+        );
+      })()}
 
       {/* Change Order Form */}
       {showChangeOrder && (
@@ -2436,20 +2607,30 @@ function AdminStandaloneChangeOrder({ token, projects, onClose, onCreated }) {
 function AdminQuotesTab({ quotes, token, onRefresh, user }) {
   const [expandedId, setExpandedId] = useState(null);
   const [selectedQuote, setSelectedQuote] = useState(null);
-  const [quoteForm, setQuoteForm] = useState({ amount: '', duration: '', scope: '', proposedStartDate: '', proposedWorkTime: '' });
+  const [quoteForm, setQuoteForm] = useState({ amount: '', duration: '', scope: '', proposedStartDate: '', proposedWorkTime: '', subId: '', subCostEstimate: '' });
   const [showConfirmDelete, setShowConfirmDelete] = useState(null);
   const [search, setSearch] = useState('');
+  const [subs, setSubs] = useState([]);
+
+  // Sub-contractor list for the admin-only assignment dropdown.
+  useEffect(() => {
+    api.adminGetSubs(token).then(r => setSubs(r.subs || [])).catch(() => {});
+  }, [token]);
+
+  const resetQuoteForm = () => setQuoteForm({ amount: '', duration: '', scope: '', proposedStartDate: '', proposedWorkTime: '', subId: '', subCostEstimate: '' });
 
   const handleSendQuote = async (requestId) => {
     try {
       await api.adminCreateQuote(requestId, {
         amount: parseFloat(quoteForm.amount), estimatedDuration: quoteForm.duration,
         scopeOfWork: quoteForm.scope, proposedStartDate: quoteForm.proposedStartDate || null,
-        proposedWorkTime: quoteForm.proposedWorkTime || null
+        proposedWorkTime: quoteForm.proposedWorkTime || null,
+        subId: quoteForm.subId ? parseInt(quoteForm.subId, 10) : null,
+        subCostEstimate: quoteForm.subCostEstimate ? parseFloat(quoteForm.subCostEstimate) : null,
       }, token);
       alert('Quote sent!');
       setSelectedQuote(null);
-      setQuoteForm({ amount: '', duration: '', scope: '', proposedStartDate: '', proposedWorkTime: '' });
+      resetQuoteForm();
       onRefresh();
     } catch (e) { alert('Failed to send quote'); }
   };
@@ -2546,6 +2727,16 @@ function AdminQuotesTab({ quotes, token, onRefresh, user }) {
                         <strong style={{ color: COLORS.textMuted }}>Scope of work:</strong> {quote.scope_of_work}
                       </p>
                     )}
+                    {/* Admin-only assignment block — never sent to customer */}
+                    {(quote.quote_sub_id || quote.quote_sub_cost_estimate != null) && (
+                      <div style={{ marginTop: '8px', paddingTop: '8px', borderTop: `1px dashed ${COLORS.borderRed}` }}>
+                        <p style={{ color: COLORS.textMuted, fontSize: '0.7rem', fontStyle: 'italic', marginBottom: '4px' }}>Internal — not visible to customer.</p>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '6px', fontSize: '0.9rem' }}>
+                          <p style={{ color: COLORS.textLight }}><strong style={{ color: COLORS.textMuted }}>Sub assigned:</strong> {quote.quote_sub_first_name ? `${quote.quote_sub_first_name} ${quote.quote_sub_last_name || ''}`.trim() + (quote.quote_sub_trade ? ` (${quote.quote_sub_trade})` : '') : '—'}</p>
+                          <p style={{ color: COLORS.textLight }}><strong style={{ color: COLORS.textMuted }}>Sub cost est.:</strong> {quote.quote_sub_cost_estimate != null ? `$${formatMoney(quote.quote_sub_cost_estimate)}` : '—'}</p>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -2560,6 +2751,27 @@ function AdminQuotesTab({ quotes, token, onRefresh, user }) {
                           <div><label style={labelStyle}>Work Time</label><input value={quoteForm.proposedWorkTime} onChange={(e) => setQuoteForm({ ...quoteForm, proposedWorkTime: e.target.value })} placeholder="e.g. 2-3 weeks" style={inputStyle} /></div>
                         </div>
                         <div><label style={labelStyle}>Scope of Work</label><textarea value={quoteForm.scope} onChange={(e) => setQuoteForm({ ...quoteForm, scope: e.target.value })} rows={3} style={{ ...inputStyle, resize: 'vertical' }} /></div>
+
+                        {/* Admin-only fields — NEVER shown to the customer or included in their email. */}
+                        <div style={{ borderTop: `1px dashed ${COLORS.borderRed}`, paddingTop: '10px', marginTop: '4px' }}>
+                          <p style={{ color: COLORS.textMuted, fontSize: '0.75rem', fontStyle: 'italic', marginBottom: '8px' }}>Internal only — not visible to customer or in their email.</p>
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                            <div>
+                              <label style={labelStyle}>Assign Sub</label>
+                              <select value={quoteForm.subId} onChange={(e) => setQuoteForm({ ...quoteForm, subId: e.target.value })} style={inputStyle}>
+                                <option value="">— None —</option>
+                                {subs.map(s => (
+                                  <option key={s.id} value={s.id}>{s.first_name} {s.last_name}{s.trade ? ` (${s.trade})` : ''}</option>
+                                ))}
+                              </select>
+                            </div>
+                            <div>
+                              <label style={labelStyle}>Sub Cost Estimate ($)</label>
+                              <input type="number" step="0.01" value={quoteForm.subCostEstimate} onChange={(e) => setQuoteForm({ ...quoteForm, subCostEstimate: e.target.value })} placeholder="e.g. 1200" style={inputStyle} />
+                            </div>
+                          </div>
+                        </div>
+
                         <div style={{ display: 'flex', gap: '10px' }}>
                           <button onClick={() => handleSendQuote(quote.id)} style={{ ...btnPrimary, flex: 1 }}>Send Quote</button>
                           <button onClick={() => setSelectedQuote(null)} style={btnSecondary}>Cancel</button>
