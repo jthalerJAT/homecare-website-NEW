@@ -133,7 +133,9 @@ const api = {
     return r.json();
   },
   uploadPhoto: async (image, token) => {
-    const r = await fetch(`${API_URL}/upload-photo`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify({ image }) });
+    const headers = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    const r = await fetch(`${API_URL}/upload-photo`, { method: 'POST', headers, body: JSON.stringify({ image }) });
     return r.json();
   },
   acceptChangeOrder: async (id, token) => {
@@ -1284,7 +1286,6 @@ function RequestQuotePage({ user, token, isAuthenticated, setCurrentPage, onSucc
     if (!file) return;
     if (!file.type.startsWith('image/')) { alert('Please select an image file.'); return; }
     if (file.size > 10 * 1024 * 1024) { alert('File is too large (max 10MB).'); return; }
-    if (!token) { alert('You must be logged in to attach photos. Submit the quote first, then attach photos via Messages.'); return; }
     setPhotoUploading(true);
     try {
       const base64 = await new Promise((resolve, reject) => {
