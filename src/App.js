@@ -267,6 +267,16 @@ const api = {
     const r = await fetch(`${API_URL}/admin/sub-payments/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
     return r.json();
   },
+  // Reports
+  adminGetReportOptions: async (token) => {
+    const r = await fetch(`${API_URL}/admin/reports/options`, { headers: { 'Authorization': `Bearer ${token}` } });
+    return r.json();
+  },
+  // Returns the raw Response so the caller can stream the xlsx blob.
+  adminRunReport: async (params, token) => {
+    const qs = new URLSearchParams(params).toString();
+    return fetch(`${API_URL}/admin/reports/run?${qs}`, { headers: { 'Authorization': `Bearer ${token}` } });
+  },
   // Sub
   subGetMyJobs: async (token) => {
     const r = await fetch(`${API_URL}/sub/my-jobs`, { headers: { 'Authorization': `Bearer ${token}` } }); return r.json();
@@ -1854,6 +1864,7 @@ function AdminDashboard({ user, token, onLogout }) {
     { key: 'projects', label: `Projects (${projects.length})` },
     { key: 'search', label: 'Search Activity' },
     { key: 'subs', label: 'Manage Subs' },
+    { key: 'report', label: 'Run Report' },
     ...(user?.user_type === 'master_admin' ? [{ key: 'admins', label: 'Manage Admins' }] : []),
     { key: 'messages', label: 'Messages' },
   ];
@@ -1910,6 +1921,7 @@ function AdminDashboard({ user, token, onLogout }) {
       {!isLoading && activeTab === 'projects' && <AdminProjectsTab projects={projects} token={token} user={user} onRefresh={fetchData} />}
       {!isLoading && activeTab === 'search' && <AdminSearchTab token={token} user={user} />}
       {!isLoading && activeTab === 'subs' && <AdminSubsTab token={token} onRefresh={fetchData} />}
+      {!isLoading && activeTab === 'report' && <AdminRunReportTab token={token} />}
       {!isLoading && activeTab === 'admins' && user?.user_type === 'master_admin' && <AdminAdminsTab token={token} currentUser={user} />}
       {!isLoading && activeTab === 'messages' && <AdminMessagesTab token={token} user={user} />}
     </div>
@@ -3085,6 +3097,112 @@ function AdminMessagesTab({ token, user }) {
           }
         </div>
       )}
+    </div>
+  );
+}
+
+// ============================================
+// ADMIN: RUN REPORT TAB (XLSX export)
+// ============================================
+function AdminRunReportTab({ token }) {
+  const [customers, setCustomers] = useState([]);
+  const [jobTypes, setJobTypes] = useState([]);
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate]     = useState('');
+  const [customerId, setCustomerId]   = useState('all');
+  const [serviceType, setServiceType] = useState('all');
+  const [isRunning, setIsRunning] = useState(false);
+
+  useEffect(() => {
+    api.adminGetReportOptions(token).then(r => {
+      setCustomers(r.customers || []);
+      setJobTypes(r.jobTypes || []);
+    }).catch(() => {});
+  }, [token]);
+
+  const runReport = async () => {
+    setIsRunning(true);
+    try {
+      const params = {};
+      if (startDate)  params.startDate  = startDate;
+      if (endDate)    params.endDate    = endDate;
+      if (customerId  && customerId  !== 'all') params.customerId  = customerId;
+      if (serviceType && serviceType !== 'all') params.serviceType = serviceType;
+
+      const res = await api.adminRunReport(params, token);
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        alert(err.error || `Failed to run report (HTTP ${res.status})`);
+        return;
+      }
+      const blob = await res.blob();
+
+      // Pull filename from Content-Disposition if present
+      const cd = res.headers.get('Content-Disposition') || '';
+      const m  = cd.match(/filename="?([^"]+)"?/);
+      const filename = m ? m[1] : `gpc-report-${new Date().toISOString().slice(0,10)}.xlsx`;
+
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      console.error(e);
+      alert('Failed to run report.');
+    } finally {
+      setIsRunning(false);
+    }
+  };
+
+  return (
+    <div>
+      <div style={cardStyle}>
+        <h3 style={{ color: COLORS.red, fontFamily: '"Oswald", sans-serif', fontSize: '1.1rem', marginBottom: '4px' }}>Run Report</h3>
+        <p style={{ color: COLORS.textMuted, fontSize: '0.85rem', marginBottom: '14px' }}>
+          Exports an Excel file with one row per project, including customer info,
+          payment history totals, sub assignment, and sub-payment totals. Use the
+          filters to narrow the range.
+        </p>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '10px', marginBottom: '12px' }}>
+          <div>
+            <label style={labelStyle}>Start Date</label>
+            <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} style={inputStyle} />
+          </div>
+          <div>
+            <label style={labelStyle}>End Date</label>
+            <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} style={inputStyle} />
+          </div>
+          <div>
+            <label style={labelStyle}>Client</label>
+            <select value={customerId} onChange={(e) => setCustomerId(e.target.value)} style={inputStyle}>
+              <option value="all">All clients</option>
+              {customers.map(c => (
+                <option key={c.id} value={c.id}>{c.first_name} {c.last_name}{c.email ? ` — ${c.email}` : ''}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label style={labelStyle}>Job Type</label>
+            <select value={serviceType} onChange={(e) => setServiceType(e.target.value)} style={inputStyle}>
+              <option value="all">All job types</option>
+              {jobTypes.map(t => <option key={t} value={t}>{t}</option>)}
+            </select>
+          </div>
+        </div>
+
+        <button onClick={runReport} disabled={isRunning} style={{ ...btnPrimary, padding: '10px 22px', opacity: isRunning ? 0.6 : 1 }}>
+          {isRunning ? 'Building Excel…' : 'Run Report'}
+        </button>
+
+        <p style={{ color: COLORS.textMuted, fontSize: '0.75rem', marginTop: '12px', fontStyle: 'italic' }}>
+          Leave any filter blank or set to "All" to include everything. Date filters apply to project created_at.
+        </p>
+      </div>
     </div>
   );
 }
